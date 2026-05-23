@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RID Executive Dashboard — Cen-Project</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#00897B;--pd:#00695C;--pl:#4DB6AC;--s:#0288D1;--ac:#F57C00;--ok:#43A047;--warn:#FB8C00;--err:#E53935;--info:#039BE5;--bg:#0D1B2A;--bg2:#112233;--bg3:#162A3A;--card:#1A3045;--card2:#1E3A50;--bdr:rgba(0,200,180,0.15);--tx:#E8F5F3;--tx2:#90B4C0;--tx3:#5A8090;--sw:260px;--r:14px;--sh:0 8px 32px rgba(0,0,0,0.4);--font:'Sarabun',sans-serif;--fh:'Kanit',sans-serif;}
+[data-theme="forest"]{--p:#2E7D32;--pd:#1B5E20;--pl:#66BB6A;--s:#00695C;--ac:#FF6F00;--bg:#0A1A0A;--bg2:#0E200E;--bg3:#122612;--card:#1A301A;--card2:#1E381E;--bdr:rgba(102,187,106,0.15);--tx:#E8F5E9;--tx2:#A5D6A7;--tx3:#66BB6A;}
+[data-theme="ocean"]{--p:#1565C0;--pd:#0D47A1;--pl:#42A5F5;--s:#6A1B9A;--ac:#FF6D00;--bg:#050B18;--bg2:#080F20;--bg3:#0A1428;--card:#0D1F3C;--card2:#102448;--bdr:rgba(66,165,245,0.15);--tx:#E3F2FD;--tx2:#90CAF9;--tx3:#42A5F5;}
+[data-theme="light"]{--p:#00897B;--pd:#00695C;--pl:#00796B;--s:#0288D1;--ac:#F57C00;--bg:#F0F4F8;--bg2:#E4EBF3;--bg3:#D8E4EF;--card:#FFFFFF;--card2:#F5F9FC;--bdr:rgba(0,137,123,0.2);--tx:#1A2E3A;--tx2:#4A6070;--tx3:#7A9AAA;--sh:0 4px 20px rgba(0,0,0,0.08);}
+[data-theme="gold"]{--p:#C49A00;--pd:#9A7700;--pl:#F5C842;--s:#B05000;--ac:#E53935;--bg:#120F05;--bg2:#1A1408;--bg3:#201A0A;--card:#2A2010;--card2:#302814;--bdr:rgba(245,200,66,0.15);--tx:#FFF8E1;--tx2:#FFD54F;--tx3:#F5C842;}
+*{margin:0;padding:0;box-sizing:border-box;}body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden;transition:background .4s,color .4s;}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--bg2);border-right:1px solid var(--bdr);z-index:1000;display:flex;flex-direction:column;transition:transform .35s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+#sidebar.collapsed{transform:translateX(calc(-1 * var(--sw)));}
+.sb-head{padding:18px 16px 12px;border-bottom:1px solid var(--bdr);flex-shrink:0;}
+.sb-logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--p),var(--s));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.logo-txt .t1{font-family:var(--fh);font-weight:700;font-size:14px;color:var(--tx);}
+.logo-txt .t2{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;}
+.nav-sec{padding:8px 16px 3px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--tx3);}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:all .2s;border-left:3px solid transparent;font-size:13px;color:var(--tx2);white-space:nowrap;}
+.nav-item:hover{background:var(--card);color:var(--pl);border-left-color:var(--p);}
+.nav-item.active{background:linear-gradient(90deg,rgba(0,137,123,.2),transparent);color:var(--pl);border-left-color:var(--p);font-weight:600;}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--err);color:#fff;font-size:10px;padding:1px 6px;border-radius:20px;}
+.sb-foot{padding:10px 16px;border-top:1px solid var(--bdr);font-size:11px;color:var(--tx3);}
+.vbadge{display:inline-block;background:var(--ac);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;}
+#topbar{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 18px;gap:10px;z-index:900;transition:left .35s;}
+#topbar.full{left:0;}
+#toggleSB{width:34px;height:34px;border-radius:8px;background:var(--card);border:1px solid var(--bdr);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+#toggleSB:hover{background:var(--p);color:#fff;}
+.tb-title{font-family:var(--fh);font-weight:600;font-size:14px;color:var(--tx);}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.file-ts{font-size:11px;color:var(--tx3);background:var(--card);padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;}
+.file-ts span{color:var(--pl);font-weight:600;}
+.bico{width:34px;height:34px;border-radius:8px;background:var(--card);border:1px solid var(--bdr);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
+.bico:hover{background:var(--card2);color:var(--pl);}
+.btn-upd{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,var(--p),var(--s));border:none;color:#fff;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;transition:all .2s;white-space:nowrap;}
+.btn-upd:hover{opacity:.88;transform:translateY(-1px);}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite;display:inline-block;}
+#main{margin-left:var(--sw);margin-top:58px;padding:22px;min-height:calc(100vh - 58px);transition:margin-left .35s;}
+#main.full{margin-left:0;}
+.page{display:none;}.page.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.ph{margin-bottom:20px;}.ph h1{font-family:var(--fh);font-weight:700;font-size:20px;color:var(--tx);}.ph p{font-size:12px;color:var(--tx3);margin-top:3px;}
+.bc{font-size:11px;color:var(--tx3);margin-bottom:6px;}.bc span{color:var(--pl);}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:20px;}
+.kc{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);padding:15px;position:relative;overflow:hidden;transition:all .25s;}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--cc,var(--p));}
+.kc:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--cc,var(--p));}
+.ki{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:9px;background:color-mix(in srgb,var(--cc,var(--p)) 15%,transparent);}
+.kl{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.kv{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--tx);line-height:1;}
+.ku{font-size:10px;color:var(--tx3);margin-top:2px;}
+.ks{display:flex;align-items:center;gap:4px;font-size:10.5px;margin-top:7px;}
+.cup{color:var(--ok)}.cdn{color:var(--err)}.cne{color:var(--tx3)}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:18px;}
+.card-hd{padding:12px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:var(--fh);font-weight:600;font-size:13.5px;color:var(--tx);display:flex;align-items:center;gap:7px;}
+.card-body{padding:16px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:18px;}
+@media(max-width:900px){.g2,.g3,.g21{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:500px){.kpi-grid{grid-template-columns:1fr 1fr;}#main{padding:12px;}.kv{font-size:20px;}}
+.cw{position:relative;height:240px;}.cw canvas{max-height:240px;}
+.tw{overflow-x:auto;}table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--bg3);color:var(--tx3);padding:8px 11px;text-align:left;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;position:sticky;top:0;z-index:1;}
+td{padding:8px 11px;border-bottom:1px solid var(--bdr);color:var(--tx2);vertical-align:middle;}
+tr:hover td{background:var(--card2);}tr.cp{cursor:pointer;}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.tg{background:rgba(67,160,71,.15);color:#66BB6A;}.to{background:rgba(251,140,0,.15);color:#FFB74D;}
+.tr{background:rgba(229,57,53,.15);color:#EF9A9A;}.tb{background:rgba(2,136,209,.15);color:#81D4FA;}
+.tgr{background:rgba(90,128,144,.15);color:#90B4C0;}.tp{background:rgba(171,71,188,.15);color:#CE93D8;}
+.pb{background:var(--bg3);border-radius:99px;height:6px;overflow:hidden;min-width:70px;}
+.pf{height:100%;border-radius:99px;transition:width .6s ease;}
+.pbr{display:flex;align-items:center;gap:7px;}
+.pbp{font-size:10.5px;color:var(--tx2);min-width:34px;text-align:right;flex-shrink:0;}
+.fr{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px;align-items:center;}
+.fi{flex:1;min-width:160px;padding:7px 12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;color:var(--tx);font-family:var(--font);font-size:12.5px;transition:border-color .2s;}
+.fi:focus{outline:none;border-color:var(--p);}
+.fs{padding:7px 11px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;color:var(--tx);font-family:var(--font);font-size:12.5px;cursor:pointer;}
+.fs:focus{outline:none;border-color:var(--p);}
+.uz{border:2px dashed var(--bdr);border-radius:var(--r);padding:36px;text-align:center;cursor:pointer;transition:all .2s;}
+.uz:hover,.uz.drag{border-color:var(--p);background:rgba(0,137,123,.05);}
+.stsec{margin-bottom:24px;}.stitle{font-family:var(--fh);font-size:13.5px;font-weight:600;color:var(--tx);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:7px;}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+@media(max-width:600px){.fr2{grid-template-columns:1fr;}}
+.fg{display:flex;flex-direction:column;gap:4px;}.flbl{font-size:11.5px;color:var(--tx3);font-weight:500;}
+.finp{padding:8px 11px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;color:var(--tx);font-family:var(--font);font-size:12.5px;transition:border-color .2s;}
+.finp:focus{outline:none;border-color:var(--p);}
+.thgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;}
+@media(max-width:600px){.thgrid{grid-template-columns:repeat(3,1fr);}}
+.tbtn{padding:9px 6px;border-radius:9px;cursor:pointer;border:2px solid var(--bdr);background:var(--card2);display:flex;flex-direction:column;align-items:center;gap:5px;font-family:var(--font);font-size:11px;color:var(--tx2);transition:all .2s;}
+.tbtn:hover,.tbtn.active{border-color:var(--p);color:var(--pl);}
+.tdot{width:22px;height:22px;border-radius:50%;}
+.bsave{padding:9px 22px;border-radius:8px;background:linear-gradient(135deg,var(--p),var(--s));border:none;color:#fff;cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:600;transition:all .2s;}
+.bsave:hover{opacity:.88;transform:translateY(-1px);}
+.bsm{padding:5px 11px;border-radius:7px;font-size:11.5px;cursor:pointer;font-family:var(--font);font-weight:600;border:1px solid var(--bdr);background:var(--bg3);color:var(--tx2);transition:all .2s;}
+.bsm:hover{background:var(--p);color:#fff;border-color:var(--p);}
+.notice{background:linear-gradient(90deg,rgba(0,137,123,.15),rgba(2,136,209,.08));border:1px solid var(--bdr);border-left:4px solid var(--p);border-radius:10px;padding:11px 15px;font-size:12.5px;color:var(--tx2);margin-bottom:18px;display:flex;align-items:center;gap:9px;}
+.modal{display:none;position:fixed;inset:0;z-index:9000;align-items:center;justify-content:center;background:rgba(0,0,0,.65);}
+.modal.open{display:flex;}
+.mbox{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);padding:24px;max-width:620px;width:94vw;max-height:88vh;overflow-y:auto;box-shadow:var(--sh);}
+.mtitle{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--tx);margin-bottom:4px;}
+#gsbar{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;align-items:flex-start;justify-content:center;padding-top:70px;background:rgba(0,0,0,.65);}
+#gsbar.open{display:flex;}
+.gsbox{width:min(600px,94vw);background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.gsrow{display:flex;align-items:center;padding:13px 15px;gap:9px;border-bottom:1px solid var(--bdr);}
+.gsinp{flex:1;background:none;border:none;color:var(--tx);font-family:var(--font);font-size:14px;outline:none;}
+#gsRes{max-height:380px;overflow-y:auto;}
+.gsi{padding:9px 15px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .15s;}
+.gsi:hover{background:var(--card2);}
+#aiPanel{display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:min(680px,94vw);z-index:8000;}
+.aibox{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.aihead{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--bdr);background:linear-gradient(90deg,rgba(123,31,162,.2),rgba(21,101,192,.15));}
+.aibody{padding:15px;max-height:280px;overflow-y:auto;font-size:12.5px;line-height:1.85;color:var(--tx2);}
+.fab-g{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:9px;z-index:7000;}
+.fab{width:46px;height:46px;border-radius:50%;border:none;color:#fff;font-size:19px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);transition:transform .2s;}
+.fab:hover{transform:scale(1.12);}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;}
+@media(max-width:768px){#overlay.show{display:block;}}
+.ll{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:7px;}
+.li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--tx2);}
+.ld{width:10px;height:10px;border-radius:50%;flex-shrink:0;}.lp{margin-left:auto;font-weight:600;color:var(--tx);}
+.sm{flex:1;min-width:110px;background:var(--bg3);border-radius:10px;padding:12px;text-align:center;}
+.smv{font-family:var(--fh);font-size:19px;font-weight:700;}.sml{font-size:10.5px;color:var(--tx3);margin-top:2px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.pulse{animation:pulse 1.8s infinite;}
+::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:99px;}::-webkit-scrollbar-thumb:hover{background:var(--p);}
+@media print{#sidebar,#topbar,.btn-upd,.bico,#toggleSB,#gsbar,#aiPanel,.fab-g{display:none!important;}#main{margin:0!important;padding:10px!important;}body{background:#fff!important;color:#000!important;}.card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid;}.kc{border:1px solid #ccc!important;background:#f9f9f9!important;break-inside:avoid;}.kv{color:#000!important;}.page{display:block!important;}#page-budget,#page-progress,#page-procurement,#page-geo,#page-alert,#page-compare,#page-export,#page-settings{display:none!important;}}
+</style></head>
+<body data-theme="default">
+<div id="overlay" onclick="toggleSB()"></div>
+<nav id="sidebar">
+  <div class="sb-head"><div class="sb-logo"><div class="logo-icon">💧</div><div class="logo-txt"><div class="t1">RID Dashboard</div><div class="t2">กรมชลประทาน</div></div></div></div>
+  <div class="sb-nav">
+    <div class="nav-sec">หน้าหลัก</div>
+    <div class="nav-item active" onclick="gp('overview')"><span class="nav-icon">📊</span>ภาพรวม Dashboard</div>
+    <div class="nav-sec">วิเคราะห์ข้อมูล</div>
+    <div class="nav-item" onclick="gp('budget')"><span class="nav-icon">💰</span>งบประมาณ &amp; เบิกจ่าย</div>
+    <div class="nav-item" onclick="gp('progress')"><span class="nav-icon">📈</span>ความก้าวหน้า</div>
+    <div class="nav-item" onclick="gp('procurement')"><span class="nav-icon">📋</span>จัดซื้อจัดจ้าง</div>
+    <div class="nav-item" onclick="gp('geo')"><span class="nav-icon">🗺️</span>ภูมิภาค &amp; ลุ่มน้ำ</div>
+    <div class="nav-sec">เครื่องมือ</div>
+    <div class="nav-item" onclick="gp('alert')"><span class="nav-icon">🔔</span>แจ้งเตือน<span class="nav-badge" id="alertBadge">0</span></div>
+    <div class="nav-item" onclick="gp('compare')"><span class="nav-icon">⚖️</span>เปรียบเทียบโครงการ</div>
+    <div class="nav-item" onclick="gp('export')"><span class="nav-icon">📤</span>ส่งออกรายงาน</div>
+    <div class="nav-sec">ระบบ</div>
+    <div class="nav-item" onclick="gp('settings')"><span class="nav-icon">⚙️</span>ตั้งค่าระบบ</div>
+  </div>
+  <div class="sb-foot">CenProject v2 <span class="vbadge">2569</span><br>กรมชลประทาน</div>
+</nav>
+<header id="topbar">
+  <button id="toggleSB" onclick="toggleSB()">☰</button>
+  <span class="tb-title" id="pageTitle">ภาพรวม Dashboard</span>
+  <div class="tb-right">
+    <div class="file-ts" id="fileTs">📂 ยังไม่ได้โหลดข้อมูล</div>
+    <button class="bico" onclick="toggleGS()" title="ค้นหา Ctrl+K">🔍</button>
+    <button class="bico" onclick="aiAll()" title="AI วิเคราะห์">✨</button>
+    <button class="btn-upd" onclick="document.getElementById('fi').click()"><span id="uico">🔄</span> อัปเดตข้อมูล</button>
+  </div>
+</header>
+<input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
+<main id="main">
+
+<!-- PAGE OVERVIEW -->
+<div class="page active" id="page-overview">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ ภาพรวม</span></div><h1>📊 ภาพรวม Dashboard ผู้บริหาร</h1><p id="ovSub">สรุปสถานะโครงการชลประทาน — กรุณาโหลดไฟล์ข้อมูล</p></div>
+  <div class="notice" id="ntc">ℹ️ กด <strong>อัปเดตข้อมูล</strong> แล้วเลือกไฟล์ .xlsx จากระบบ CenProject (ส่งออกข้อมูล → Export Excel) หรือลากไฟล์มาวางในหน้านี้</div>
+  <div class="kpi-grid">
+    <div class="kc" style="--cc:var(--p)"><div class="ki">🏗️</div><div class="kl">โครงการทั้งหมด</div><div class="kv" id="k1">—</div><div class="ku">โครงการ</div><div class="ks cne" id="k1s">รอข้อมูล</div></div>
+    <div class="kc" style="--cc:var(--ok)"><div class="ki">✅</div><div class="kl">แล้วเสร็จ</div><div class="kv" id="k2">—</div><div class="ku">โครงการ</div><div class="ks" id="k2s">—</div></div>
+    <div class="kc" style="--cc:var(--info)"><div class="ki">⚙️</div><div class="kl">กำลังดำเนินการ</div><div class="kv" id="k3">—</div><div class="ku">โครงการ</div><div class="ks" id="k3s">—</div></div>
+    <div class="kc" style="--cc:var(--err)"><div class="ki">⚠️</div><div class="kl">ล่าช้ากว่าแผน</div><div class="kv" id="k4">—</div><div class="ku">โครงการ</div><div class="ks" id="k4s">—</div></div>
+    <div class="kc" style="--cc:var(--ac)"><div class="ki">💵</div><div class="kl">งบประมาณรวม</div><div class="kv" id="k5">—</div><div class="ku">ล้านบาท</div><div class="ks" id="k5s">—</div></div>
+    <div class="kc" style="--cc:#AB47BC"><div class="ki">💳</div><div class="kl">เบิกจ่ายสะสม</div><div class="kv" id="k6">—</div><div class="ku">ล้านบาท</div><div class="ks" id="k6s">—</div></div>
+    <div class="kc" style="--cc:#26C6DA"><div class="ki">📐</div><div class="kl">ความก้าวหน้าเฉลี่ย</div><div class="kv" id="k7">—</div><div class="ku">%</div><div class="ks" id="k7s">—</div></div>
+    <div class="kc" style="--cc:#EF5350"><div class="ki">📉</div><div class="kl">% เบิกจ่าย</div><div class="kv" id="k8">—</div><div class="ku">%</div><div class="ks" id="k8s">—</div></div>
+    <div class="kc" style="--cc:#FFA726"><div class="ki">📑</div><div class="kl">มีสัญญาจ้างเหมา</div><div class="kv" id="k9">—</div><div class="ku">โครงการ</div><div class="ks" id="k9s">—</div></div>
+    <div class="kc" style="--cc:#66BB6A"><div class="ki">🗂️</div><div class="kl">งบประมาณปีปัจจุบัน</div><div class="kv" id="k10">—</div><div class="ku">ล้านบาท</div><div class="ks" id="k10s">—</div></div>
+    <div class="kc" style="--cc:#42A5F5"><div class="ki">🗺️</div><div class="kl">จำนวนจังหวัด</div><div class="kv" id="k11">—</div><div class="ku">จังหวัด</div><div class="ks" id="k11s">—</div></div>
+    <div class="kc" style="--cc:#FF7043"><div class="ki">⏰</div><div class="kl">เบิกจ่ายต่ำ (&lt;30%)</div><div class="kv" id="k12">—</div><div class="ku">โครงการ</div><div class="ks" id="k12s">—</div></div>
+  </div>
+  <div class="g21">
+    <div class="card"><div class="card-hd"><div class="card-title">📊 สถานะโครงการ</div><button class="bsm" onclick="swChart('cSt')">สลับกราฟ</button></div><div class="card-body"><div class="cw"><canvas id="cSt"></canvas></div></div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">🍩 สัดส่วนงบ</div></div><div class="card-body"><div class="cw" style="height:180px"><canvas id="cDn"></canvas></div><ul class="ll" id="dnLeg"></ul></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-hd"><div class="card-title">💰 งบ vs เบิกจ่าย แยกแหล่งงบ</div></div><div class="card-body"><div class="cw"><canvas id="cCf"></canvas></div></div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">🔥 การกระจายความก้าวหน้า</div></div><div class="card-body"><div class="cw"><canvas id="cDs"></canvas></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title">🏆 โครงการสำคัญ — งบสูงสุด</div><button class="bsm" onclick="gp('budget')">ดูทั้งหมด →</button></div>
+    <div class="card-body"><div class="tw"><table><thead><tr><th>#</th><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>ลุ่มน้ำ</th><th>งบรวม (บาท)</th><th>เบิกจ่าย</th><th>% เบิก</th><th>% ผลสะสม</th><th>สถานะ</th></tr></thead><tbody id="topTb"><tr><td colspan="10" style="text-align:center;padding:28px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+  </div>
+  <div id="uzMain" class="uz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropF(event)">
+    <div style="font-size:38px;margin-bottom:10px">📂</div>
+    <div style="font-size:14px;color:var(--tx2)">คลิก หรือ ลากไฟล์ .xlsx มาวางที่นี่</div>
+    <div style="font-size:11.5px;color:var(--tx3);margin-top:5px">รองรับไฟล์จาก CenProject → ส่งออกข้อมูล → Export Excel</div>
+  </div>
+</div>
+
+<!-- PAGE BUDGET -->
+<div class="page" id="page-budget">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ งบประมาณ</span></div><h1>💰 งบประมาณ &amp; การเบิกจ่าย</h1><p>วิเคราะห์งบประมาณทั้งโครงการและปีปัจจุบัน</p></div>
+  <div class="g3"><div class="card"><div class="card-body" style="text-align:center"><div style="font-size:28px;margin-bottom:5px">💵</div><div class="kv" id="bt" style="font-size:20px">—</div><div class="kl" style="margin-top:4px">งบประมาณรวม (บาท)</div></div></div><div class="card"><div class="card-body" style="text-align:center"><div style="font-size:28px;margin-bottom:5px">💳</div><div class="kv" id="bs" style="font-size:20px">—</div><div class="kl" style="margin-top:4px">เบิกจ่ายสะสม (บาท)</div></div></div><div class="card"><div class="card-body" style="text-align:center"><div style="font-size:28px;margin-bottom:5px">💼</div><div class="kv" id="br" style="font-size:20px">—</div><div class="kl" style="margin-top:4px">คงเหลือ (บาท)</div></div></div></div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title">📋 รายการโครงการ (คลิกเพื่อดูรายละเอียด)</div></div>
+    <div class="card-body">
+      <div class="fr">
+        <input class="fi" id="bSrch" placeholder="🔍 ค้นหาชื่อโครงการ / รหัส..." oninput="fBgt()">
+        <select class="fs" id="bPv" onchange="fBgt()"><option value="">— ทุกจังหวัด —</option></select>
+        <select class="fs" id="bSrc" onchange="fBgt()"><option value="">— ทุกแหล่งงบ —</option></select>
+        <select class="fs" id="bWt" onchange="fBgt()"><option value="">— ทุกลักษณะงาน —</option></select>
+      </div>
+      <div class="tw" style="max-height:500px;overflow-y:auto"><table><thead><tr><th>#</th><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>แหล่งงบ</th><th>งบรวม (บาท)</th><th>งบปีนี้ (บาท)</th><th>เบิกจ่าย (บาท)</th><th>% เบิก</th><th>สถานะ</th></tr></thead><tbody id="bTb"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE PROGRESS -->
+<div class="page" id="page-progress">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ ความก้าวหน้า</span></div><h1>📈 ติดตามความก้าวหน้า</h1><p>แผนและผลการปฏิบัติงาน</p></div>
+  <div class="card"><div class="card-hd"><div class="card-title">📊 กราฟ แผน vs ผล (20 โครงการแรก)</div></div><div class="card-body"><div class="cw" style="height:300px"><canvas id="cPb"></canvas></div></div></div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title">📋 รายการความก้าวหน้า (คลิกดูรายละเอียด)</div></div>
+    <div class="card-body">
+      <div class="fr">
+        <input class="fi" id="pSrch" placeholder="🔍 ค้นหา..." oninput="fPrg()">
+        <select class="fs" id="pSt" onchange="fPrg()"><option value="">— ทุกสถานะ —</option><option>แล้วเสร็จ</option><option>กำลังดำเนินการ</option><option>ล่าช้า</option><option>ยังไม่เริ่ม</option></select>
+        <select class="fs" id="pPv" onchange="fPrg()"><option value="">— ทุกจังหวัด —</option></select>
+        <select class="fs" id="pBs" onchange="fPrg()"><option value="">— ทุกลุ่มน้ำ —</option></select>
+      </div>
+      <div class="tw" style="max-height:480px;overflow-y:auto"><table><thead><tr><th>#</th><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>ลักษณะงาน</th><th>% แผนเดือน</th><th>% ผลเดือน</th><th>% แผนสะสม</th><th>% ผลสะสม</th><th>ส่วนต่าง</th><th>สถานะ</th></tr></thead><tbody id="pTb"><tr><td colspan="11" style="text-align:center;padding:20px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE PROCUREMENT -->
+<div class="page" id="page-procurement">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ จัดซื้อจัดจ้าง</span></div><h1>📋 การจัดซื้อจัดจ้าง</h1><p>สรุปสัญญาและวิธีการจัดหา</p></div>
+  <div class="g2">
+    <div class="card"><div class="card-hd"><div class="card-title">📊 จ้างเหมา vs ทำเอง</div></div><div class="card-body"><div class="cw"><canvas id="cPc"></canvas></div></div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">📊 แหล่งที่มาของงบประมาณ</div></div><div class="card-body"><div class="cw"><canvas id="cSc"></canvas></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title">📋 รายละเอียดสัญญา (คลิกดูรายละเอียด)</div></div>
+    <div class="card-body"><div class="tw" style="max-height:400px;overflow-y:auto"><table><thead><tr><th>#</th><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จ้างเหมา/ทำเอง</th><th>เลขที่สัญญา</th><th>วิธีจัดหา</th><th>เริ่มสัญญา</th><th>สิ้นสุดสัญญา</th><th>ผู้ประกอบการ</th><th>วงเงิน (บาท)</th><th>สถานะ</th></tr></thead><tbody id="pcTb"><tr><td colspan="11" style="text-align:center;padding:20px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- PAGE GEO -->
+<div class="page" id="page-geo">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ ภูมิภาค</span></div><h1>🗺️ การกระจายตามพื้นที่</h1><p>โครงการแยกตามจังหวัดและลุ่มน้ำ</p></div>
+  <div class="g2">
+    <div class="card"><div class="card-hd"><div class="card-title">📊 แยกตามจังหวัด</div></div><div class="card-body"><div class="cw" style="height:300px"><canvas id="cGeo"></canvas></div></div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">🌊 แยกตามลุ่มน้ำ</div></div><div class="card-body"><div class="cw" style="height:300px"><canvas id="cLn"></canvas></div></div></div>
+  </div>
+  <div class="card"><div class="card-hd"><div class="card-title">🏅 สรุปตามจังหวัด</div></div><div class="card-body"><div class="tw"><table><thead><tr><th>จังหวัด</th><th>โครงการ</th><th>งบรวม (บาท)</th><th>เบิกจ่าย (บาท)</th><th>% เบิก</th><th>% ผลเฉลี่ย</th></tr></thead><tbody id="geoTb"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div></div>
+</div>
+
+<!-- PAGE ALERT -->
+<div class="page" id="page-alert">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ แจ้งเตือน</span></div><h1>🔔 การแจ้งเตือน &amp; ติดตาม</h1><p>โครงการที่ต้องการความสนใจ</p></div>
+  <div class="g2">
+    <div class="card" style="border-top:3px solid var(--err)"><div class="card-hd"><div class="card-title">⚠️ ล่าช้ากว่าแผน</div><span id="dlCnt" class="tag tr">0</span></div><div class="card-body"><div class="tw" style="max-height:320px;overflow-y:auto"><table><thead><tr><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>% แผนสะสม</th><th>% ผลสะสม</th><th>ส่วนต่าง</th></tr></thead><tbody id="dlTb"><tr><td colspan="6" style="text-align:center;padding:18px;color:var(--ok)">✅ ไม่มีโครงการล่าช้า</td></tr></tbody></table></div></div></div>
+    <div class="card" style="border-top:3px solid var(--info)"><div class="card-hd"><div class="card-title">📉 เบิกจ่ายต่ำ (&lt;30%)</div><span id="lwCnt" class="tag tb">0</span></div><div class="card-body"><div class="tw" style="max-height:320px;overflow-y:auto"><table><thead><tr><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>งบปีนี้</th><th>% เบิกจ่าย</th></tr></thead><tbody id="lwTb"><tr><td colspan="5" style="text-align:center;padding:18px;color:var(--ok)">✅ ทุกโครงการปกติ</td></tr></tbody></table></div></div></div>
+  </div>
+  <div class="card" style="border-top:3px solid var(--warn)"><div class="card-hd"><div class="card-title">⚠️ มีปัญหา/อุปสรรค</div><span id="pbCnt" class="tag to">0</span></div><div class="card-body"><div class="tw" style="max-height:280px;overflow-y:auto"><table><thead><tr><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>ปัญหา</th><th>สถานะ</th></tr></thead><tbody id="pbTb"><tr><td colspan="5" style="text-align:center;padding:18px;color:var(--ok)">✅ ไม่มีปัญหา</td></tr></tbody></table></div></div></div>
+  <div class="card"><div class="card-hd"><div class="card-title">📊 สถิติรวม</div></div><div class="card-body" id="alStats"><div style="color:var(--tx3);font-size:13px">กรุณาโหลดข้อมูลก่อน</div></div></div>
+</div>
+
+<!-- PAGE COMPARE -->
+<div class="page" id="page-compare">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ เปรียบเทียบ</span></div><h1>⚖️ เปรียบเทียบโครงการ</h1><p>เลือกสูงสุด 5 โครงการ</p></div>
+  <div class="card"><div class="card-hd"><div class="card-title">เลือกโครงการ</div><button class="bsm" onclick="clrCmp()">ล้างการเลือก</button></div><div class="card-body"><div class="fr"><input class="fi" id="cSrch" placeholder="🔍 ค้นหา..." oninput="fCmp()"></div><div id="cmpList" style="max-height:260px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:7px"></div></div></div>
+  <div class="card" id="cmpRes" style="display:none"><div class="card-hd"><div class="card-title">📊 Radar Chart เปรียบเทียบ</div></div><div class="card-body"><div class="cw" style="height:340px"><canvas id="cCmp"></canvas></div></div></div>
+</div>
+
+<!-- PAGE EXPORT -->
+<div class="page" id="page-export">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ ส่งออก</span></div><h1>📤 ส่งออกรายงาน</h1><p>ส่งออกและพิมพ์รายงาน</p></div>
+  <div class="g2">
+    <div class="card"><div class="card-hd"><div class="card-title">📊 ส่งออก CSV</div></div><div class="card-body" style="display:flex;flex-direction:column;gap:9px">
+      <button class="bsave" style="width:100%" onclick="expCSV('all')">📥 ข้อมูลทั้งหมด</button>
+      <button class="bsave" style="width:100%;background:linear-gradient(135deg,var(--err),#C62828)" onclick="expCSV('delay')">⚠️ เฉพาะโครงการล่าช้า</button>
+      <button class="bsave" style="width:100%;background:linear-gradient(135deg,var(--info),#01579B)" onclick="expCSV('low')">📉 เฉพาะเบิกจ่ายต่ำ</button>
+      <button class="bsave" style="width:100%;background:linear-gradient(135deg,var(--warn),#E65100)" onclick="expCSV('prob')">🚨 เฉพาะโครงการมีปัญหา</button>
+    </div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">🖨️ พิมพ์ / แชร์</div></div><div class="card-body" style="display:flex;flex-direction:column;gap:9px">
+      <button class="bsave" style="width:100%" onclick="window.print()">🖨️ พิมพ์สรุป KPI</button>
+      <button class="bsave" style="width:100%;background:linear-gradient(135deg,var(--s),#01579B)" onclick="cpyLink()">🔗 คัดลอกลิงก์</button>
+    </div></div>
+  </div>
+  <div class="card"><div class="card-hd"><div class="card-title">📋 Executive Summary</div></div><div class="card-body"><div id="exSum" style="font-size:13px;line-height:2;color:var(--tx2)">กรุณาโหลดข้อมูลก่อน</div></div></div>
+</div>
+
+<!-- PAGE SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="ph"><div class="bc">หน้าหลัก <span>/ ตั้งค่า</span></div><h1>⚙️ ตั้งค่าระบบ</h1><p>กำหนดค่าต่างๆ</p></div>
+  <div class="stsec"><div class="stitle">🔐 ข้อมูล CenProject</div>
+    <div class="fr2">
+      <div class="fg"><label class="flbl">URL ระบบ</label><input class="finp" id="cfUrl" value="https://cenproject.rid.go.th"></div>
+      <div class="fg"><label class="flbl">ปีงบประมาณ</label><input class="finp" id="cfYr" type="number" value="2569"></div>
+      <div class="fg"><label class="flbl">Username</label><input class="finp" id="cfUs" type="text" placeholder="onfarm23"></div>
+      <div class="fg"><label class="flbl">Password</label><input class="finp" id="cfPw" type="password" placeholder="••••••••"></div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);padding:10px;background:var(--bg3);border-radius:8px;margin-bottom:12px;line-height:1.7">
+      ⚠️ ข้อมูลบันทึกใน localStorage ของเบราว์เซอร์เท่านั้น ไม่ส่งออกสู่เซิร์ฟเวอร์ภายนอก<br>
+      📌 ขั้นตอน: cenproject.rid.go.th → ล็อกอิน → ระบบติดตาม → ส่งออกข้อมูล → Export Excel → กด "อัปเดตข้อมูล"
+    </div>
+  </div>
+  <div class="stsec"><div class="stitle">🎨 ธีมสีและรูปลักษณ์</div>
+    <div class="thgrid">
+      <button class="tbtn active" onclick="setTh('default',this)"><div class="tdot" style="background:linear-gradient(135deg,#00897B,#0288D1)"></div>เขียว-ฟ้า</button>
+      <button class="tbtn" onclick="setTh('forest',this)"><div class="tdot" style="background:linear-gradient(135deg,#2E7D32,#00695C)"></div>เขียวป่า</button>
+      <button class="tbtn" onclick="setTh('ocean',this)"><div class="tdot" style="background:linear-gradient(135deg,#1565C0,#6A1B9A)"></div>มหาสมุทร</button>
+      <button class="tbtn" onclick="setTh('gold',this)"><div class="tdot" style="background:linear-gradient(135deg,#C49A00,#B05000)"></div>ทองคำ</button>
+      <button class="tbtn" onclick="setTh('light',this)"><div class="tdot" style="background:linear-gradient(135deg,#00897B,#F57C00);border:1px solid #ddd"></div>สว่าง</button>
+    </div>
+  </div>
+  <div class="stsec"><div class="stitle">📊 เกณฑ์การแจ้งเตือน</div>
+    <div class="fr2">
+      <div class="fg"><label class="flbl">เกณฑ์ล่าช้า (ส่วนต่าง %)</label><input class="finp" id="cfDl" type="number" value="5" min="1" max="30"></div>
+      <div class="fg"><label class="flbl">เกณฑ์เบิกจ่ายต่ำ (%)</label><input class="finp" id="cfLw" type="number" value="30" min="1" max="80"></div>
+      <div class="fg"><label class="flbl">ชื่อหน่วยงาน</label><input class="finp" id="cfOrg" placeholder="กรมชลประทาน"></div>
+      <div class="fg"><label class="flbl">Auto-refresh (นาที, 0=ปิด)</label><input class="finp" id="cfRf" type="number" value="0" min="0" max="120"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="bsave" onclick="saveCFG()">💾 บันทึกการตั้งค่า</button>
+    <button class="bsm" onclick="clrAll()" style="color:var(--err);border-color:var(--err)">🗑️ ล้างข้อมูลทั้งหมด</button>
+    <span id="rfCD" style="font-size:12px;color:var(--pl);font-weight:600"></span>
+  </div>
+</div>
+
+</main>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:11px 18px;font-size:12.5px;color:var(--tx);z-index:9999;box-shadow:var(--sh);display:flex;align-items:center;gap:9px;transition:transform .3s;max-width:380px;white-space:nowrap"><span id="tico">ℹ️</span><span id="tmsg">ข้อความ</span></div>
+
+<!-- MODAL -->
+<div class="modal" id="prjModal" onclick="if(event.target===this)clsModal()">
+  <div class="mbox">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+      <div class="mtitle" id="mTtl">รายละเอียดโครงการ</div>
+      <button onclick="clsModal()" style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer;flex-shrink:0;padding-left:12px">✕</button>
+    </div>
+    <div id="mBody"></div>
+  </div>
+</div>
+
+<!-- GLOBAL SEARCH -->
+<div id="gsbar" onclick="if(event.target===this)toggleGS()">
+  <div class="gsbox">
+    <div class="gsrow"><span style="font-size:15px">🔍</span><input class="gsinp" id="gsInp" placeholder="ค้นหาโครงการ รหัส จังหวัด ลุ่มน้ำ..." oninput="doGS(this.value)"><span style="font-size:11px;color:var(--tx3);background:var(--bg3);padding:2px 7px;border-radius:5px;cursor:pointer" onclick="toggleGS()">ESC</span></div>
+    <div id="gsRes"></div>
+    <div style="padding:7px 14px;font-size:11px;color:var(--tx3);border-top:1px solid var(--bdr)">Ctrl+K เปิด/ปิด • คลิกผลลัพธ์เพื่อดูรายละเอียด</div>
+  </div>
+</div>
+
+<!-- AI PANEL -->
+<div id="aiPanel">
+  <div class="aibox">
+    <div class="aihead"><span style="font-weight:600;font-size:13.5px;color:var(--tx)">✨ AI วิเคราะห์ภาพรวม</span><button onclick="document.getElementById('aiPanel').style.display='none'" style="background:none;border:none;color:var(--tx3);font-size:17px;cursor:pointer">✕</button></div>
+    <div class="aibody" id="aiBody">กด ✨ เพื่อรับการวิเคราะห์ภาพรวมโครงการทั้งหมดด้วย Claude AI</div>
+  </div>
+</div>
+
+<!-- FABs -->
+<div class="fab-g">
+  <button class="fab" style="background:linear-gradient(135deg,#7B1FA2,#1565C0)" onclick="aiAll()" title="AI วิเคราะห์">✨</button>
+  <button class="fab" style="background:linear-gradient(135deg,var(--p),var(--s))" onclick="toggleGS()" title="ค้นหา Ctrl+K">🔍</button>
+  <button class="fab" style="background:linear-gradient(135deg,var(--ac),#E65100)" onclick="document.getElementById('fi').click()" title="โหลดไฟล์">📂</button>
+</div>
+<script>
+// ============ STATE ============
+let D=[], CFG={}, CH={}, SCMP=new Set(), rfTimer=null, rfCD2=0;
+const PGTITLES={overview:'ภาพรวม Dashboard',budget:'งบประมาณ & เบิกจ่าย',progress:'ความก้าวหน้า',procurement:'จัดซื้อจัดจ้าง',geo:'ภูมิภาค & ลุ่มน้ำ',alert:'แจ้งเตือน & ติดตาม',compare:'เปรียบเทียบโครงการ',export:'ส่งออกรายงาน',settings:'ตั้งค่าระบบ'};
+
+// ============ COLUMN NAMES (exact from xlsx header row 3) ============
+const F = {
+  CODE_CEN:'รหัส Cen-Project', CODE_NEW:'รหัสระบบติดตามใหม่', CODE_OLD:'รหัสระบบติดตามเดิม', CODE_GF:'รหัส GFMIS',
+  LAT:'Latitude', LNG:'Longtitude',
+  BUREAU:'ชื่อหน่วยงานระดับสำนัก', PROJ_ORG:'ชื่อหน่วยงานระดับโครงการ',
+  NAME:'ชื่อ / ประมาณการ', OUTPUT:'ผลผลิต', ACTIVITY:'กิจกรรมภายใต้ผลผลิต',
+  WORK_TYPE:'ลักษณะงาน', PROJ_TYPE:'ประเภทโครงการ',
+  BUD_SRC:'แหล่งที่มาของงบประมาณ', BUD_TYPE:'ประเภทงบประมาณ',
+  BUD_TOTAL:'งบประมาณทั้งโครงการ', BUD_YEAR:'งบประมาณ ปีปัจจุบัน',
+  TAMBON:'ตำบล', AMPHOE:'อำเภอ', CHANGWAT:'จังหวัด', BASIN:'ลุ่มน้ำ',
+  HIRE_TYPE:'จ้างเหมา / ทำเอง',
+  CONTRACT_NO:'เลขที่สัญญา', HIRE_METHOD:'วิธีจัดหา',
+  CONTRACT_VAL:'วงเงิน(บาท)', CONTRACT_VAL2:'วงเงิน(บาท).1',
+  CONTRACT_START:'เริ่มสัญญา', CONTRACT_END:'สิ้นสุดสัญญา',
+  CONTRACTOR:'ผู้ประกอบการ',
+  PRICE_AVG:'ราคากลาง',
+  ALLOC:'รวม.1',        // ได้รับการโอนจัดสรร
+  SPENT_TOTAL:'รวม.2',  // ผลการเบิกจ่ายรวม
+  SPENT_PCT:'ร้อยละ',   // % เบิกจ่าย
+  PLAN_MONTH:'แผนเดือน(ปัจจุบัน)',    // แผนเดือน ทั้งโครงการ
+  ACT_MONTH:'ผล',                      // ผลเดือน
+  PLAN_PROJ:'แผนเดือน(ปัจจุบัน).1',  // แผนสะสม
+  ACT_PROJ:'ผล.1',                     // ผลสะสม
+  PROBLEM:'ปัญหา', PROBLEM_DESC:'คำชี้แจงเพิ่มเติม / ปัญหา-อุปสรรค', SOLUTION:'แนวทางแก้ไข',
+  START:'เริ่มต้น', END:'สิ้นสุด', DURATION:'ระยะเวลา',
+};
+
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', () => {
+  loadCFG(); applyCFG(); loadSaved();
+  Chart.defaults.font.family="'Sarabun',sans-serif"; Chart.defaults.font.size=12;
+  initMobile();
+});
+
+// ============ SIDEBAR ============
+let sbOpen = window.innerWidth > 768;
+function toggleSB() {
+  sbOpen = !sbOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sbOpen);
+  document.getElementById('topbar').classList.toggle('full', !sbOpen);
+  document.getElementById('main').classList.toggle('full', !sbOpen);
+  if(window.innerWidth<=768) document.getElementById('overlay').classList.toggle('show', sbOpen);
+}
+function initMobile() {
+  if(window.innerWidth<=768) {
+    ['sidebar','topbar','main'].forEach(id=>{
+      if(id==='sidebar') document.getElementById(id).classList.add('collapsed');
+      else document.getElementById(id).classList.add('full');
+    });
+    sbOpen=false;
+  }
+}
+
+// ============ PAGES ============
+const pgRenders = {budget:rBgt,progress:rPrg,geo:rGeo,procurement:rPrc,alert:rAlt,compare:rCmpList,export:rExSum,overview:rOv};
+function gp(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('page-'+id); if(el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{ if((n.getAttribute('onclick')||'').includes("'"+id+"'")) n.classList.add('active'); });
+  document.getElementById('pageTitle').textContent=PGTITLES[id]||id;
+  if(window.innerWidth<=768&&sbOpen) toggleSB();
+  if(pgRenders[id]) pgRenders[id]();
+}
+
+// ============ CONFIG ============
+function loadCFG() {
+  try{CFG=JSON.parse(localStorage.getItem('rid_cfg')||'{}');}catch{CFG={};}
+  CFG={url:'https://cenproject.rid.go.th',year:'2569',user:'onfarm23',pass:'',delay:5,low:30,org:'กรมชลประทาน',refresh:0,theme:'default',...CFG};
+}
+function applyCFG() {
+  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||'';});
+  [['cfDl','delay'],['cfLw','low'],['cfRf','refresh']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||0;});
+  setTh(CFG.theme,null);
+  if(CFG.refresh>0) startRF(CFG.refresh);
+}
+function saveCFG() {
+  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)CFG[k]=el.value;});
+  [['cfDl','delay'],['cfLw','low'],['cfRf','refresh']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)CFG[k]=parseFloat(el.value)||0;});
+  localStorage.setItem('rid_cfg',JSON.stringify(CFG));
+  startRF(CFG.refresh);
+  toast('บันทึกการตั้งค่าเรียบร้อย ✅','success');
+}
+function setTh(t,btn) {
+  document.body.setAttribute('data-theme',t||'default'); CFG.theme=t||'default';
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else document.querySelectorAll('.tbtn').forEach(b=>{ if((b.getAttribute('onclick')||'').includes("'"+t+"'")) b.classList.add('active'); });
+  setTimeout(()=>{ if(D.length) rAll(); }, 80);
+}
+function clrAll() {
+  if(!confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่?')) return;
+  D=[]; SCMP.clear(); localStorage.removeItem('rid_data'); localStorage.removeItem('rid_ft');
+  document.getElementById('fileTs').innerHTML='📂 ยังไม่ได้โหลดข้อมูล';
+  document.getElementById('ntc').style.display='';
+  document.getElementById('uzMain').style.display='';
+  ['k1','k2','k3','k4','k5','k6','k7','k8','k9','k10','k11','k12'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+  toast('ล้างข้อมูลเรียบร้อย','info');
+}
+
+// ============ AUTO REFRESH ============
+function startRF(mins) {
+  if(rfTimer){clearInterval(rfTimer);rfTimer=null;}
+  const el=document.getElementById('rfCD'); if(el)el.textContent='';
+  if(!mins||mins<=0) return;
+  rfCD2=mins*60;
+  rfTimer=setInterval(()=>{
+    rfCD2--;
+    const m=Math.floor(rfCD2/60),s=rfCD2%60;
+    const el=document.getElementById('rfCD'); if(el) el.textContent=`รีเฟรชใน ${m}:${String(s).padStart(2,'0')}`;
+    if(rfCD2<=0){rfCD2=mins*60;document.getElementById('fi').click();toast('🔄 อัปเดตอัตโนมัติ','info');}
+  },1000);
+}
+
+// ============ FILE ============
+function handleFile(e) { const f=e.target.files[0];if(!f)return;procFile(f);e.target.value=''; }
+function dropF(e) {
+  e.preventDefault(); document.querySelectorAll('.uz').forEach(z=>z.classList.remove('drag'));
+  const f=e.dataTransfer.files[0];
+  if(f&&(f.name.endsWith('.xlsx')||f.name.endsWith('.xls'))) procFile(f);
+  else toast('กรุณาเลือกไฟล์ .xlsx เท่านั้น','error');
+}
+function procFile(file) {
+  document.getElementById('uico').className='spin'; document.getElementById('uico').textContent='⟳';
+  toast('กำลังอ่านไฟล์...','info');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      // header is at row index 3 (rows 0-2 are title/blank)
+      const raw=XLSX.utils.sheet_to_json(ws,{range:3,defval:null});
+      D=raw;
+      const ts=new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      document.getElementById('fileTs').innerHTML=`📂 <span>${file.name}</span> | <span>${ts}</span>`;
+      try{const s=JSON.stringify(D.slice(0,800));if(s.length<4.5e6){localStorage.setItem('rid_data',s);localStorage.setItem('rid_ft',ts+'|'+file.name);}}catch{}
+      document.getElementById('ntc').style.display='none';
+      document.getElementById('uzMain').style.display='none';
+      rAll();
+      toast(`โหลดสำเร็จ ${D.length} โครงการ ✅`,'success');
+    } catch(err){ toast('เกิดข้อผิดพลาด: '+err.message,'error'); }
+    document.getElementById('uico').className=''; document.getElementById('uico').textContent='🔄';
+  };
+  reader.readAsBinaryString(file);
+}
+function loadSaved() {
+  try{const d=localStorage.getItem('rid_data'),t=localStorage.getItem('rid_ft');if(!d)return;D=JSON.parse(d);if(t)document.getElementById('fileTs').innerHTML=`📂 <span>${t.replace('|',' | ')}</span>`;document.getElementById('ntc').style.display='none';document.getElementById('uzMain').style.display='none';rAll();}catch{}
+}
+
+// ============ DATA HELPERS ============
+const n=v=>{if(typeof v==='number')return isNaN(v)?0:v;if(!v)return 0;const p=parseFloat(String(v).replace(/,/g,''));return isNaN(p)?0:p;};
+const fmt=(v,d=0)=>v===null||v===undefined||v===''||isNaN(v)?'—':Number(v).toLocaleString('th-TH',{maximumFractionDigits:d,minimumFractionDigits:d});
+const fmtM=v=>{const x=n(v);if(x>=1e9)return (x/1e9).toFixed(2)+' พัน ล.';if(x>=1e6)return (x/1e6).toFixed(2)+' ล.';return fmt(x);};
+
+// field getters — all mapped to exact column names from the xlsx
+const cd=r=>r[F.CODE_NEW]||r[F.CODE_OLD]||r[F.CODE_CEN]||r[F.CODE_GF]||'—';
+const nm=r=>r[F.NAME]||'ไม่ระบุ';
+const pv=r=>r[F.CHANGWAT]||'ไม่ระบุ';
+const bs=r=>r[F.BASIN]||'ไม่ระบุ';
+const bt=r=>n(r[F.BUD_TOTAL]);
+const by=r=>n(r[F.BUD_YEAR]);
+const sp=r=>n(r[F.SPENT_TOTAL]);
+const spPct=r=>{const b=by(r);return b>0?n(r[F.SPENT_PCT]):0;};
+const pm=r=>n(r[F.PLAN_MONTH]);
+const am=r=>n(r[F.ACT_MONTH]);
+const pp=r=>n(r[F.PLAN_PROJ]);
+const ap=r=>n(r[F.ACT_PROJ]);
+const ht=r=>r[F.HIRE_TYPE]||'ไม่ระบุ';
+const bsrc=r=>r[F.BUD_SRC]||'ไม่ระบุ';
+const wt=r=>r[F.WORK_TYPE]||'ไม่ระบุ';
+const lat=r=>n(r[F.LAT]);
+const lng=r=>n(r[F.LNG]);
+
+function sts(r){
+  const a=ap(r),p2=pp(r);
+  if(a>=100) return 'แล้วเสร็จ';
+  if(a>0&&(p2-a)>(CFG.delay||5)) return 'ล่าช้า';
+  if(a>0) return 'กำลังดำเนินการ';
+  return 'ยังไม่เริ่ม';
+}
+const sTag=s=>({แล้วเสร็จ:'<span class="tag tg">แล้วเสร็จ</span>',กำลังดำเนินการ:'<span class="tag tb">กำลังดำเนินการ</span>',ล่าช้า:'<span class="tag tr">ล่าช้า</span>',ยังไม่เริ่ม:'<span class="tag tgr">ยังไม่เริ่ม</span>'}[s]||`<span class="tag tgr">${s}</span>`);
+const scl=p=>p>=70?'var(--ok)':p>=30?'var(--warn)':'var(--err)';
+const pbr=(p,c='var(--p)')=>`<div class="pbr"><div class="pb" style="flex:1"><div class="pf" style="width:${Math.min(100,Math.max(0,p||0)).toFixed(1)}%;background:${c}"></div></div><span class="pbp">${(p||0).toFixed(1)}%</span></div>`;
+
+const COLS=['#00897B','#0288D1','#F57C00','#AB47BC','#26C6DA','#EF5350','#FFA726','#66BB6A','#42A5F5','#FF7043','#8D6E63','#EC407A'];
+
+// ============ RENDER ALL ============
+function rAll(){updKPI();rOv();rBgt();rPrg();rGeo();rPrc();rAlt();rCmpList();rExSum();}
+
+// ============ KPIs ============
+function updKPI(){
+  if(!D.length)return;
+  const total=D.length,done=D.filter(r=>sts(r)==='แล้วเสร็จ').length;
+  const inprog=D.filter(r=>sts(r)==='กำลังดำเนินการ').length,delay=D.filter(r=>sts(r)==='ล่าช้า').length;
+  const btSum=D.reduce((a,r)=>a+bt(r),0),bySum=D.reduce((a,r)=>a+by(r),0),spSum=D.reduce((a,r)=>a+sp(r),0);
+  const avgA=D.reduce((a,r)=>a+ap(r),0)/total;
+  const spPc=bySum>0?spSum/bySum*100:0;
+  const provs=new Set(D.map(r=>pv(r)).filter(p=>p&&p!=='ไม่ระบุ')).size;
+  const contracts=D.filter(r=>r[F.CONTRACT_NO]).length;
+  const low=D.filter(r=>{const b=by(r);return b>0&&spPct(r)<(CFG.low||30);}).length;
+
+  const sv=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  const ss=(id,val,cls)=>{const e=document.getElementById(id);if(e){e.textContent=val;if(cls)e.className='ks '+cls;}};
+
+  sv('k1',fmt(total)); ss('k1s',`ปีงบประมาณ ${CFG.year||'2569'}`,'cne');
+  sv('k2',fmt(done)); ss('k2s',`${(done/total*100).toFixed(1)}% ของทั้งหมด`,'cup');
+  sv('k3',fmt(inprog)); ss('k3s',`${(inprog/total*100).toFixed(1)}% ของทั้งหมด`,'cne');
+  sv('k4',fmt(delay)); ss('k4s',delay>0?'⚠️ ต้องติดตาม':'✅ ปกติ',delay>0?'cdn':'cup');
+  sv('k5',fmtM(btSum)); ss('k5s',`งบปีนี้ ${fmtM(bySum)}`,'cne');
+  sv('k6',fmtM(spSum)); ss('k6s',`${spPc.toFixed(1)}% ของงบปีนี้`,spPc>=50?'cup':'cdn');
+  sv('k7',avgA.toFixed(1)+'%'); ss('k7s',avgA>=50?'✅ ตามแผน':'⚠️ ต่ำกว่าเป้า',avgA>=50?'cup':'cdn');
+  sv('k8',spPc.toFixed(1)+'%'); ss('k8s',spPc>=50?'✅ ดี':'⚠️ ต้องเร่ง',spPc>=50?'cup':'cdn');
+  sv('k9',fmt(contracts)); ss('k9s',`${(contracts/total*100).toFixed(1)}% มีสัญญา`,'cne');
+  sv('k10',fmtM(bySum)); ss('k10s',`งบทั้งโครงการ ${fmtM(btSum)}`,'cne');
+  sv('k11',fmt(provs)); ss('k11s',`จาก ${new Set(D.map(r=>bs(r))).size} ลุ่มน้ำ`,'cne');
+  sv('k12',fmt(low)); ss('k12s',low>0?'⚠️ ต้องเร่งเบิก':'✅ ปกติ',low>0?'cdn':'cup');
+  document.getElementById('alertBadge').textContent=delay+low;
+  document.getElementById('ovSub').textContent=`สรุปสถานะ ${total} โครงการ | ปีงบประมาณ ${CFG.year||'2569'} | ${new Date().toLocaleDateString('th-TH')}`;
+}
+
+// ============ CHART UTILS ============
+const gcd=()=>{const s=getComputedStyle(document.documentElement);return{tc:s.getPropertyValue('--tx2').trim()||'#aaa',gc:'rgba(144,180,192,0.12)'};};
+function dCh(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+
+// ============ OVERVIEW CHARTS ============
+function rOv(){
+  if(!D.length)return;
+  const {tc,gc}=gcd();
+  const sList=['แล้วเสร็จ','กำลังดำเนินการ','ล่าช้า','ยังไม่เริ่ม'];
+  const sCnt=sList.map(s=>D.filter(r=>sts(r)===s).length);
+
+  dCh('cSt');
+  CH.cSt=new Chart(document.getElementById('cSt'),{type:'bar',data:{labels:sList,datasets:[{label:'โครงการ',data:sCnt,backgroundColor:['#66BB6A','#42A5F5','#EF5350','#90B4C0'],borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc}}}}});
+
+  const sBud=sList.map(s=>D.filter(r=>sts(r)===s).reduce((a,r)=>a+bt(r),0));
+  dCh('cDn');
+  CH.cDn=new Chart(document.getElementById('cDn'),{type:'doughnut',data:{labels:sList,datasets:[{data:sBud,backgroundColor:['#66BB6A','#42A5F5','#EF5350','#90B4C0'],borderWidth:0,hoverOffset:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const totB=sBud.reduce((a,b)=>a+b,0);
+  document.getElementById('dnLeg').innerHTML=sList.map((s,i)=>`<li class="li"><div class="ld" style="background:${['#66BB6A','#42A5F5','#EF5350','#90B4C0'][i]}"></div>${s}<span class="lp">${totB>0?(sBud[i]/totB*100).toFixed(1):0}%</span></li>`).join('');
+
+  // cashflow by budget source
+  const srcs=[...new Set(D.map(r=>bsrc(r)))];
+  const srcB=srcs.map(s=>D.filter(r=>bsrc(r)===s).reduce((a,r)=>a+by(r),0)/1e6);
+  const srcS=srcs.map(s=>D.filter(r=>bsrc(r)===s).reduce((a,r)=>a+sp(r),0)/1e6);
+  dCh('cCf');
+  CH.cCf=new Chart(document.getElementById('cCf'),{type:'bar',data:{labels:srcs.map(s=>s.replace(/\(.*\)/,'').trim().substring(0,16)),datasets:[{label:'งบปีปัจจุบัน (ล.)',data:srcB,backgroundColor:'rgba(0,137,123,.75)',borderRadius:4},{label:'เบิกจ่าย (ล.)',data:srcS,backgroundColor:'rgba(2,136,209,.75)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc}}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc}}}}});
+
+  // progress distribution
+  const bkts=['0%','1-25%','26-50%','51-75%','76-99%','100%'];
+  const cnts=[D.filter(r=>ap(r)===0).length,D.filter(r=>{const p=ap(r);return p>0&&p<=25;}).length,D.filter(r=>{const p=ap(r);return p>25&&p<=50;}).length,D.filter(r=>{const p=ap(r);return p>50&&p<=75;}).length,D.filter(r=>{const p=ap(r);return p>75&&p<100;}).length,D.filter(r=>ap(r)>=100).length];
+  dCh('cDs');
+  CH.cDs=new Chart(document.getElementById('cDs'),{type:'line',data:{labels:bkts,datasets:[{label:'จำนวนโครงการ',data:cnts,borderColor:'#F57C00',backgroundColor:'rgba(245,124,0,.15)',fill:true,tension:.4,pointBackgroundColor:'#F57C00',pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc}}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc}}}}});
+
+  // top projects
+  const top=[...D].sort((a,b)=>bt(b)-bt(a)).slice(0,10);
+  document.getElementById('topTb').innerHTML=top.map((r,i)=>{
+    const idx=D.indexOf(r),a=ap(r),s=spPct(r);
+    return `<tr class="cp" onclick="opMod(${idx})"><td>${i+1}</td><td style="font-size:10px;color:var(--tx3)">${cd(r)}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nm(r)}">${nm(r)}</td><td>${pv(r)}</td><td>${bs(r)}</td><td style="text-align:right;font-weight:600">${fmt(bt(r))}</td><td style="text-align:right">${fmt(sp(r))}</td><td style="min-width:100px">${pbr(s,scl(s))}</td><td style="min-width:100px">${pbr(a)}</td><td>${sTag(sts(r))}</td></tr>`;
+  }).join('');
+}
+function swChart(id){if(!CH[id])return;CH[id].config.type=CH[id].config.type==='bar'?'line':'bar';CH[id].update();}
+
+// ============ BUDGET PAGE ============
+function popSel(id,vals,lbl='ทุก'){const s=document.getElementById(id);if(!s)return;const c=s.value;s.innerHTML=`<option value="">— ${lbl} —</option>`+vals.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('');}
+function rBgt(){
+  if(!D.length)return;
+  popSel('bPv',[...new Set(D.map(r=>pv(r)).filter(Boolean))].sort(),'ทุกจังหวัด');
+  popSel('bSrc',[...new Set(D.map(r=>bsrc(r).replace(/\(.*\)/,'').trim()).filter(Boolean))].sort(),'ทุกแหล่งงบ');
+  popSel('bWt',[...new Set(D.map(r=>wt(r)).filter(Boolean))].sort(),'ทุกลักษณะงาน');
+  fBgt();
+}
+function fBgt(){
+  const q=(document.getElementById('bSrch').value||'').toLowerCase();
+  const fp=document.getElementById('bPv').value, fs=document.getElementById('bSrc').value, fw=document.getElementById('bWt').value;
+  const fl=D.filter(r=>(!q||nm(r).toLowerCase().includes(q)||cd(r).toLowerCase().includes(q))&&(!fp||pv(r)===fp)&&(!fs||bsrc(r).replace(/\(.*\)/,'').trim()===fs)&&(!fw||wt(r)===fw));
+  const tb2=fl.reduce((a,r)=>a+bt(r),0), sb=fl.reduce((a,r)=>a+sp(r),0);
+  document.getElementById('bt').textContent=fmt(tb2);
+  document.getElementById('bs').textContent=fmt(sb);
+  document.getElementById('br').textContent=fmt(tb2-sb);
+  const tbody=document.getElementById('bTb');
+  if(!fl.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--tx3)">ไม่พบข้อมูล</td></tr>';return;}
+  tbody.innerHTML=fl.slice(0,300).map((r,i)=>{
+    const idx=D.indexOf(r),by2=by(r),sp2=sp(r),pct=by2>0?sp2/by2*100:0;
+    return `<tr class="cp" onclick="opMod(${idx})"><td>${i+1}</td><td style="font-size:10px">${cd(r)}</td><td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td>${pv(r)}</td><td style="font-size:10.5px">${bsrc(r).replace(/\(.*\)/,'').trim()}</td><td style="text-align:right">${fmt(bt(r))}</td><td style="text-align:right">${fmt(by2)}</td><td style="text-align:right">${fmt(sp2)}</td><td style="min-width:100px">${pbr(pct,scl(pct))}</td><td>${sTag(sts(r))}</td></tr>`;
+  }).join('');
+}
+
+// ============ PROGRESS PAGE ============
+function rPrg(){
+  if(!D.length)return;
+  const {tc,gc}=gcd();
+  popSel('pPv',[...new Set(D.map(r=>pv(r)).filter(Boolean))].sort(),'ทุกจังหวัด');
+  popSel('pBs',[...new Set(D.map(r=>bs(r)).filter(Boolean))].sort(),'ทุกลุ่มน้ำ');
+  const smp=D.slice(0,20);
+  dCh('cPb');
+  CH.cPb=new Chart(document.getElementById('cPb'),{type:'bar',data:{labels:smp.map(r=>cd(r)),datasets:[{label:'% แผนสะสม',data:smp.map(r=>pp(r)),backgroundColor:'rgba(2,136,209,.75)',borderRadius:3},{label:'% ผลสะสม',data:smp.map(r=>ap(r)),backgroundColor:'rgba(0,137,123,.85)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc}}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{max:100,ticks:{color:tc},grid:{color:gc}}}}});
+  fPrg();
+}
+function fPrg(){
+  const q=(document.getElementById('pSrch').value||'').toLowerCase();
+  const fs=document.getElementById('pSt').value, fp=document.getElementById('pPv').value, fb=document.getElementById('pBs').value;
+  const fl=D.filter(r=>(!q||nm(r).toLowerCase().includes(q)||cd(r).toLowerCase().includes(q))&&(!fs||sts(r)===fs)&&(!fp||pv(r)===fp)&&(!fb||bs(r)===fb));
+  const tbody=document.getElementById('pTb');
+  if(!fl.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--tx3)">ไม่พบข้อมูล</td></tr>';return;}
+  tbody.innerHTML=fl.slice(0,300).map((r,i)=>{
+    const idx=D.indexOf(r),a2=ap(r),p2=pp(r),diff=a2-p2;
+    return `<tr class="cp" onclick="opMod(${idx})"><td>${i+1}</td><td style="font-size:10px">${cd(r)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td>${pv(r)}</td><td style="font-size:10.5px">${wt(r)}</td><td style="text-align:center">${pm(r).toFixed(1)}%</td><td style="text-align:center">${am(r).toFixed(1)}%</td><td style="text-align:center">${p2.toFixed(1)}%</td><td style="min-width:90px">${pbr(a2)}</td><td style="text-align:center;color:${diff>=0?'var(--ok)':'var(--err)'};font-weight:600">${diff>=0?'+':''}${diff.toFixed(1)}%</td><td>${sTag(sts(r))}</td></tr>`;
+  }).join('');
+}
+
+// ============ PROCUREMENT PAGE ============
+function rPrc(){
+  if(!D.length)return;
+  const {tc,gc}=gcd();
+  const hts=[...new Set(D.map(r=>ht(r)))];
+  const hCnt=hts.map(t=>D.filter(r=>ht(r)===t).length);
+  dCh('cPc');
+  CH.cPc=new Chart(document.getElementById('cPc'),{type:'doughnut',data:{labels:hts,datasets:[{data:hCnt,backgroundColor:COLS.slice(0,hts.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:tc}}}}});
+  const srcs=[...new Set(D.map(r=>bsrc(r)))];
+  const sCnt=srcs.map(s=>D.filter(r=>bsrc(r)===s).length);
+  dCh('cSc');
+  CH.cSc=new Chart(document.getElementById('cSc'),{type:'bar',data:{labels:srcs.map(s=>s.replace(/\(.*\)/,'').trim()),datasets:[{label:'โครงการ',data:sCnt,backgroundColor:COLS,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc}}}}});
+  document.getElementById('pcTb').innerHTML=D.slice(0,200).map((r,i)=>{
+    const idx=D.indexOf(r),cv=n(r[F.CONTRACT_VAL2])||n(r[F.CONTRACT_VAL]);
+    return `<tr class="cp" onclick="opMod(${idx})"><td>${i+1}</td><td style="font-size:10px">${cd(r)}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td><span class="tag ${ht(r)==='ดำเนินงานเอง'?'tg':'tb'}">${ht(r)}</span></td><td style="font-size:10.5px">${r[F.CONTRACT_NO]||'—'}</td><td style="font-size:10.5px">${r[F.HIRE_METHOD]||'—'}</td><td style="font-size:10.5px">${r[F.CONTRACT_START]||'—'}</td><td style="font-size:10.5px">${r[F.CONTRACT_END]||'—'}</td><td style="font-size:10.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[F.CONTRACTOR]||'—'}</td><td style="text-align:right">${cv?fmt(cv):'—'}</td><td>${sTag(sts(r))}</td></tr>`;
+  }).join('');
+}
+
+// ============ GEO PAGE ============
+function rGeo(){
+  if(!D.length)return;
+  const {tc,gc}=gcd();
+  const pm2={};
+  D.forEach(r=>{const p=pv(r);if(!pm2[p])pm2[p]={cnt:0,bud:0,sp2:0,pg:0};pm2[p].cnt++;pm2[p].bud+=bt(r);pm2[p].sp2+=sp(r);pm2[p].pg+=ap(r);});
+  const spv=Object.entries(pm2).sort((a,b)=>b[1].cnt-a[1].cnt);
+  dCh('cGeo');
+  CH.cGeo=new Chart(document.getElementById('cGeo'),{type:'bar',indexAxis:'y',data:{labels:spv.map(e=>e[0]),datasets:[{label:'โครงการ',data:spv.map(e=>e[1].cnt),backgroundColor:COLS,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11}},grid:{display:false}}}}});
+  const bm={};D.forEach(r=>{const b=bs(r);bm[b]=(bm[b]||0)+1;});
+  const bEnt=Object.entries(bm).sort((a,b)=>b[1]-a[1]);
+  dCh('cLn');
+  CH.cLn=new Chart(document.getElementById('cLn'),{type:'pie',data:{labels:bEnt.map(e=>e[0]),datasets:[{data:bEnt.map(e=>e[1]),backgroundColor:COLS,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:tc,font:{size:11}}}}}});
+  document.getElementById('geoTb').innerHTML=spv.map(([p,d])=>{const spp=d.bud>0?d.sp2/d.bud*100:0,avg=d.pg/d.cnt;return`<tr><td><strong>${p}</strong></td><td style="text-align:center">${d.cnt}</td><td style="text-align:right">${fmt(d.bud)}</td><td style="text-align:right">${fmt(d.sp2)}</td><td style="min-width:90px">${pbr(spp,scl(spp))}</td><td style="min-width:90px">${pbr(avg)}</td></tr>`;}).join('');
+}
+
+// ============ ALERT PAGE ============
+function rAlt(){
+  if(!D.length)return;
+  const dl=D.filter(r=>sts(r)==='ล่าช้า').sort((a,b)=>(pp(a)-ap(a))-(pp(b)-ap(b)));
+  const lw=D.filter(r=>{const b=by(r);return b>0&&spPct(r)<(CFG.low||30);}).sort((a,b)=>spPct(a)-spPct(b));
+  const pb2=D.filter(r=>r[F.PROBLEM_DESC]&&String(r[F.PROBLEM_DESC]).trim().length>2);
+  document.getElementById('dlCnt').textContent=dl.length;
+  document.getElementById('lwCnt').textContent=lw.length;
+  document.getElementById('pbCnt').textContent=pb2.length;
+  document.getElementById('alertBadge').textContent=dl.length+lw.length;
+  document.getElementById('dlTb').innerHTML=dl.length?dl.map(r=>{const idx=D.indexOf(r),p2=pp(r),a2=ap(r);return`<tr class="cp" onclick="opMod(${idx})"><td style="font-size:10px">${cd(r)}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td>${pv(r)}</td><td>${p2.toFixed(1)}%</td><td>${a2.toFixed(1)}%</td><td style="color:var(--err);font-weight:700">-${(p2-a2).toFixed(1)}%</td></tr>`;}).join(''):'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--ok)">✅ ไม่มีโครงการล่าช้า</td></tr>';
+  document.getElementById('lwTb').innerHTML=lw.length?lw.map(r=>{const idx=D.indexOf(r),s=spPct(r);return`<tr class="cp" onclick="opMod(${idx})"><td style="font-size:10px">${cd(r)}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td>${pv(r)}</td><td style="text-align:right">${fmt(by(r))}</td><td style="min-width:90px">${pbr(s,'var(--err)')}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--ok)">✅ ทุกโครงการปกติ</td></tr>';
+  document.getElementById('pbTb').innerHTML=pb2.length?pb2.slice(0,50).map(r=>{const idx=D.indexOf(r);return`<tr class="cp" onclick="opMod(${idx})"><td style="font-size:10px">${cd(r)}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</td><td>${pv(r)}</td><td style="font-size:10.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${String(r[F.PROBLEM_DESC]).substring(0,60)}...</td><td>${sTag(sts(r))}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--ok)">✅ ไม่มีปัญหา</td></tr>';
+  const total=D.length;
+  document.getElementById('alStats').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px"><div class="sm"><div class="smv" style="color:var(--err)">${dl.length}</div><div class="sml">โครงการล่าช้า</div></div><div class="sm"><div class="smv" style="color:var(--warn)">${lw.length}</div><div class="sml">เบิกจ่ายต่ำ</div></div><div class="sm"><div class="smv" style="color:var(--warn)">${pb2.length}</div><div class="sml">มีปัญหา</div></div><div class="sm"><div class="smv" style="color:var(--ok)">${D.filter(r=>sts(r)==='แล้วเสร็จ').length}</div><div class="sml">แล้วเสร็จ</div></div><div class="sm"><div class="smv" style="color:var(--info)">${D.filter(r=>sts(r)==='กำลังดำเนินการ').length}</div><div class="sml">กำลังดำเนินการ</div></div><div class="sm"><div class="smv" style="color:var(--tx3)">${D.filter(r=>sts(r)==='ยังไม่เริ่ม').length}</div><div class="sml">ยังไม่เริ่ม</div></div></div>`;
+}
+
+// ============ COMPARE PAGE ============
+function rCmpList(){if(!D.length)return;fCmp();}
+function fCmp(){
+  const q=(document.getElementById('cSrch').value||'').toLowerCase();
+  const fl=D.filter(r=>!q||nm(r).toLowerCase().includes(q)||cd(r).toLowerCase().includes(q)).slice(0,80);
+  document.getElementById('cmpList').innerHTML=fl.map(r=>{
+    const idx=D.indexOf(r),sel=SCMP.has(idx);
+    return`<div id="cm${idx}" onclick="tgCmp(${idx})" style="padding:8px 11px;border-radius:8px;border:${sel?'2px solid var(--p)':'1px solid var(--bdr)'};background:${sel?'rgba(0,137,123,.1)':'var(--bg3)'};cursor:pointer;font-size:11.5px;transition:all .2s"><div style="font-weight:600;color:var(--pl);margin-bottom:2px">${cd(r)}</div><div style="color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm(r)}</div><div style="margin-top:3px">${pv(r)} | ${pbr(ap(r))}</div></div>`;
+  }).join('');
+}
+function tgCmp(idx){if(SCMP.has(idx))SCMP.delete(idx);else{if(SCMP.size>=5){toast('เลือกได้สูงสุด 5 โครงการ','error');return;}SCMP.add(idx);}fCmp();rCmpCh();}
+function clrCmp(){SCMP.clear();fCmp();document.getElementById('cmpRes').style.display='none';}
+function rCmpCh(){
+  if(!SCMP.size){document.getElementById('cmpRes').style.display='none';return;}
+  document.getElementById('cmpRes').style.display='';
+  const {tc,gc}=gcd();
+  const rows=[...SCMP].map(i=>D[i]);
+  dCh('cCmp');
+  CH.cCmp=new Chart(document.getElementById('cCmp'),{type:'radar',data:{labels:['งบรวม (ล.×10)','% ผลสะสม','% แผนสะสม','% เบิกจ่าย','% ผลเดือน'],datasets:rows.map((r,i)=>({label:cd(r),data:[bt(r)/1e7,ap(r),pp(r),spPct(r),am(r)],borderColor:COLS[i],backgroundColor:COLS[i]+'22',pointBackgroundColor:COLS[i]}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc}}},scales:{r:{ticks:{color:tc,backdropColor:'transparent'},grid:{color:gc},pointLabels:{color:tc}}}}});
+}
+
+// ============ EXPORT PAGE ============
+function rExSum(){
+  const el=document.getElementById('exSum');if(!D.length){el.textContent='กรุณาโหลดข้อมูลก่อน';return;}
+  const total=D.length,done=D.filter(r=>sts(r)==='แล้วเสร็จ').length,dl=D.filter(r=>sts(r)==='ล่าช้า').length;
+  const btS=D.reduce((a,r)=>a+bt(r),0),byS=D.reduce((a,r)=>a+by(r),0),spS=D.reduce((a,r)=>a+sp(r),0);
+  const avgA=D.reduce((a,r)=>a+ap(r),0)/total,spp=byS>0?spS/byS*100:0;
+  el.innerHTML=`<strong>สรุปผลการดำเนินงาน ${CFG.org||'กรมชลประทาน'} ปีงบประมาณ ${CFG.year||'2569'}</strong><br><br>📌 โครงการทั้งหมด: <strong>${total} โครงการ</strong> | งบประมาณรวม: <strong>${fmtM(btS)}</strong> | งบปีปัจจุบัน: <strong>${fmtM(byS)}</strong><br>✅ แล้วเสร็จ: <strong>${done} โครงการ</strong> (${(done/total*100).toFixed(1)}%)<br>⚠️ ล่าช้ากว่าแผน: <strong style="color:var(--err)">${dl} โครงการ</strong> (${(dl/total*100).toFixed(1)}%)<br>📈 ความก้าวหน้าเฉลี่ย: <strong>${avgA.toFixed(2)}%</strong><br>💳 เบิกจ่ายสะสม: <strong>${fmtM(spS)}</strong> (${spp.toFixed(2)}% ของงบปีปัจจุบัน)<br>🗺️ ครอบคลุม: <strong>${new Set(D.map(r=>pv(r))).size} จังหวัด</strong> | <strong>${new Set(D.map(r=>bs(r))).size} ลุ่มน้ำ</strong><br>📅 วันที่รายงาน: <strong>${new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'})}</strong>`;
+}
+function expCSV(type){
+  if(!D.length){toast('ยังไม่มีข้อมูล','error');return;}
+  const maps={all:{d:D,f:'cenproject_all.csv'},delay:{d:D.filter(r=>sts(r)==='ล่าช้า'),f:'cenproject_delay.csv'},low:{d:D.filter(r=>{const b=by(r);return b>0&&spPct(r)<(CFG.low||30);}),f:'cenproject_low.csv'},prob:{d:D.filter(r=>r[F.PROBLEM_DESC]&&String(r[F.PROBLEM_DESC]).trim().length>2),f:'cenproject_problem.csv'}};
+  const {d,f}=maps[type]||maps.all;
+  const keys=Object.keys(d[0]||{});
+  const csv=[keys.join(','),...d.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=f;a.click();
+  toast(`ส่งออก ${d.length} รายการ ✅`,'success');
+}
+function cpyLink(){navigator.clipboard.writeText(location.href).then(()=>toast('คัดลอกลิงก์แล้ว 🔗','success'));}
+
+// ============ MODAL ============
+function opMod(idx){
+  const r=D[idx];if(!r)return;
+  const a2=ap(r),p2=pp(r),diff=a2-p2,s2=spPct(r),la=lat(r),lo=lng(r);
+  document.getElementById('mTtl').textContent=nm(r);
+  document.getElementById('mBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">รหัสระบบติดตาม</div><div style="font-weight:700;color:var(--pl)">${cd(r)}</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">สถานะ</div>${sTag(sts(r))}</div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">จังหวัด / ลุ่มน้ำ</div><div style="font-weight:600">${pv(r)} | ${bs(r)}</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">ลักษณะงาน</div><div style="font-size:12px">${wt(r)}</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">งบประมาณรวม</div><div style="font-weight:700;color:var(--ac)">${fmt(bt(r))} บาท</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">งบปีปัจจุบัน</div><div style="font-weight:700;color:var(--s)">${fmt(by(r))} บาท</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">เบิกจ่ายสะสม</div><div style="font-weight:700">${fmt(sp(r))} บาท</div></div>
+      <div style="background:var(--bg3);border-radius:9px;padding:11px"><div style="font-size:10.5px;color:var(--tx3);margin-bottom:3px">ราคากลาง</div><div style="font-weight:600">${fmt(n(r[F.PRICE_AVG]))} บาท</div></div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11.5px;color:var(--tx3);margin-bottom:6px">📊 ความก้าวหน้าสะสม (ทั้งโครงการ)</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--tx3);width:38px">แผน</span><div class="pb" style="flex:1"><div class="pf" style="width:${Math.min(p2,100).toFixed(1)}%;background:var(--s)"></div></div><span style="font-size:11px;font-weight:600;color:var(--s)">${p2.toFixed(1)}%</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--tx3);width:38px">ผล</span><div class="pb" style="flex:1"><div class="pf" style="width:${Math.min(a2,100).toFixed(1)}%;background:${diff>=0?'var(--ok)':'var(--err)'}"></div></div><span style="font-size:11px;font-weight:600;color:${diff>=0?'var(--ok)':'var(--err)'}">${a2.toFixed(1)}%</span></div>
+      </div>
+      <div style="margin-top:7px;font-size:12px;color:${diff>=0?'var(--ok)':'var(--err)'}">${diff>=0?'✅ ก้าวหน้ากว่าแผน':'⚠️ ล่าช้ากว่าแผน'} ${Math.abs(diff).toFixed(1)}%</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11.5px;color:var(--tx3);margin-bottom:5px">💳 % เบิกจ่าย (${s2.toFixed(1)}%)</div>
+      ${pbr(s2,scl(s2))}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:11.5px">
+      <div><span style="color:var(--tx3)">จ้างเหมา/ทำเอง: </span>${ht(r)}</div>
+      <div><span style="color:var(--tx3)">แหล่งงบ: </span>${bsrc(r).replace(/\(.*\)/,'').trim()}</div>
+      <div><span style="color:var(--tx3)">กิจกรรม: </span>${r[F.ACTIVITY]||'—'}</div>
+      <div><span style="color:var(--tx3)">ประเภทงบ: </span>${r[F.BUD_TYPE]||'—'}</div>
+      <div><span style="color:var(--tx3)">เลขที่สัญญา: </span>${r[F.CONTRACT_NO]||'—'}</div>
+      <div><span style="color:var(--tx3)">วิธีจัดหา: </span>${r[F.HIRE_METHOD]||'—'}</div>
+      <div><span style="color:var(--tx3)">ผู้ประกอบการ: </span><span style="max-width:180px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">${r[F.CONTRACTOR]||'—'}</span></div>
+      <div><span style="color:var(--tx3)">อายุสัญญา: </span>${r[F.DURATION]||'—'}</div>
+      <div><span style="color:var(--tx3)">เริ่มต้น: </span>${r[F.CONTRACT_START]||r[F.START]||'—'}</div>
+      <div><span style="color:var(--tx3)">สิ้นสุด: </span>${r[F.CONTRACT_END]||r[F.END]||'—'}</div>
+      <div><span style="color:var(--tx3)">% แผนเดือน: </span>${pm(r).toFixed(1)}%</div>
+      <div><span style="color:var(--tx3)">% ผลเดือน: </span>${am(r).toFixed(1)}%</div>
+    </div>
+    ${la&&lo?`<div style="margin-bottom:12px"><div style="font-size:11.5px;color:var(--tx3);margin-bottom:5px">📍 พิกัด: ${la.toFixed(4)}, ${lo.toFixed(4)}</div><a href="https://www.google.com/maps/search/?api=1&query=${la},${lo}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:7px;background:var(--bg3);border:1px solid var(--bdr);color:var(--pl);font-size:12px;text-decoration:none">🗺️ เปิด Google Maps</a></div>`:''}
+    ${r[F.PROBLEM_DESC]&&String(r[F.PROBLEM_DESC]).trim().length>2?`<div style="margin-bottom:10px;padding:10px;background:rgba(229,57,53,.08);border-radius:8px;border-left:3px solid var(--err)"><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚠️ ปัญหา-อุปสรรค</div><div style="font-size:12px;color:var(--tx2)">${r[F.PROBLEM_DESC]}</div></div>`:''}
+    ${r[F.SOLUTION]&&String(r[F.SOLUTION]).trim().length>2?`<div style="margin-bottom:10px;padding:10px;background:rgba(67,160,71,.08);border-radius:8px;border-left:3px solid var(--ok)"><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">💡 แนวทางแก้ไข</div><div style="font-size:12px;color:var(--tx2)">${r[F.SOLUTION]}</div></div>`:''}
+    <div style="margin-top:12px;padding:11px;background:var(--bg3);border-radius:9px;border-left:3px solid var(--p)">
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:6px">🤖 สรุปโดย Claude AI</div>
+      <div id="aiMod"><button onclick="aiPrj(${idx})" style="padding:5px 13px;border-radius:7px;background:linear-gradient(135deg,var(--p),var(--s));border:none;color:#fff;cursor:pointer;font-size:12px;font-family:var(--font)">✨ วิเคราะห์โครงการนี้</button></div>
+    </div>`;
+  document.getElementById('prjModal').classList.add('open');
+}
+function clsModal(){document.getElementById('prjModal').classList.remove('open');}
+
+// ============ AI ============
+async function aiPrj(idx){
+  const r=D[idx],el=document.getElementById('aiMod');
+  el.innerHTML='<span class="pulse" style="color:var(--tx3)">🤖 กำลังวิเคราะห์...</span>';
+  const prompt=`วิเคราะห์โครงการชลประทาน (กรมชลประทาน) สำหรับผู้บริหาร กระชับ 3-4 ประโยค เป็นภาษาไทย:\n- รหัส: ${cd(r)} | ชื่อ: ${nm(r)}\n- จังหวัด: ${pv(r)} | ลุ่มน้ำ: ${bs(r)} | ลักษณะงาน: ${wt(r)}\n- งบรวม: ${fmt(bt(r))} | งบปีนี้: ${fmt(by(r))} | เบิกจ่าย: ${fmt(sp(r))} (${spPct(r).toFixed(1)}%)\n- แผนสะสม: ${pp(r).toFixed(1)}% | ผลสะสม: ${ap(r).toFixed(1)}% | ส่วนต่าง: ${(ap(r)-pp(r)).toFixed(1)}%\n- สถานะ: ${sts(r)} | จ้างเหมา/ทำเอง: ${ht(r)}\n${r[F.PROBLEM_DESC]?'- ปัญหา: '+r[F.PROBLEM_DESC]:''}\nระบุจุดเสี่ยงและข้อเสนอแนะสั้นๆ สำหรับผู้บริหาร`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'ไม่สามารถวิเคราะห์ได้';
+    el.innerHTML=`<div style="line-height:1.8;font-size:12px">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+  }catch(e){el.innerHTML=`<span style="color:var(--err)">Error: ${e.message}</span>`;}
+}
+async function aiAll(){
+  if(!D.length){toast('ยังไม่มีข้อมูล','error');return;}
+  const el=document.getElementById('aiBody');
+  el.innerHTML='<span class="pulse" style="color:var(--tx3)">🤖 กำลังวิเคราะห์ภาพรวม...</span>';
+  document.getElementById('aiPanel').style.display='';
+  const total=D.length,done=D.filter(r=>sts(r)==='แล้วเสร็จ').length,dl=D.filter(r=>sts(r)==='ล่าช้า').length;
+  const btS=D.reduce((a,r)=>a+bt(r),0),byS=D.reduce((a,r)=>a+by(r),0),spS=D.reduce((a,r)=>a+sp(r),0);
+  const avgA=D.reduce((a,r)=>a+ap(r),0)/total,spp=byS>0?spS/byS*100:0;
+  const topDl=D.filter(r=>sts(r)==='ล่าช้า').slice(0,3).map(r=>nm(r)).join(', ');
+  const provList=[...new Set(D.map(r=>pv(r)))].join(', ');
+  const basinList=[...new Set(D.map(r=>bs(r)))].join(', ');
+  const prompt=`วิเคราะห์ภาพรวมผลการดำเนินงานโครงการชลประทาน ปีงบประมาณ ${CFG.year||'2569'} สำหรับผู้บริหารระดับสูง กรมชลประทาน เป็นภาษาไทย:\nสถิติสำคัญ: ${total} โครงการ | งบรวม ${(btS/1e6).toFixed(2)} ล้านบาท | งบปีนี้ ${(byS/1e6).toFixed(2)} ล้านบาท | เบิกจ่าย ${(spS/1e6).toFixed(2)} ล้านบาท (${spp.toFixed(1)}%) | แล้วเสร็จ ${done} (${(done/total*100).toFixed(1)}%) | ล่าช้า ${dl} (${(dl/total*100).toFixed(1)}%) | ความก้าวหน้าเฉลี่ย ${avgA.toFixed(2)}%\nพื้นที่: ${provList}\nลุ่มน้ำ: ${basinList}\nโครงการล่าช้า: ${topDl||'ไม่มี'}\nกรุณาวิเคราะห์: 1)ประเมินภาพรวม 2)จุดเสี่ยงหลัก 3)ข้อเสนอแนะเชิงนโยบาย 3 ข้อ 4)สรุปสำหรับผู้บริหาร 1 ประโยค`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'ไม่สามารถวิเคราะห์ได้';
+    el.innerHTML=`<div style="line-height:1.9">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--tx)">$1</strong>')}</div>`;
+  }catch(e){el.innerHTML=`<span style="color:var(--err)">Error: ${e.message}</span>`;}
+}
+
+// ============ GLOBAL SEARCH ============
+let gsOp=false;
+function toggleGS(){
+  gsOp=!gsOp;
+  document.getElementById('gsbar').classList.toggle('open',gsOp);
+  if(gsOp){document.getElementById('gsInp').value='';document.getElementById('gsRes').innerHTML='';setTimeout(()=>document.getElementById('gsInp').focus(),50);}
+}
+function doGS(q){
+  const el=document.getElementById('gsRes');
+  if(!q||q.length<2){el.innerHTML='';return;}
+  const lq=q.toLowerCase();
+  const found=D.filter(r=>Object.values(r).some(v=>String(v||'').toLowerCase().includes(lq))).slice(0,20);
+  if(!found.length){el.innerHTML='<div style="padding:12px;color:var(--tx3);font-size:12.5px">ไม่พบผลลัพธ์</div>';return;}
+  el.innerHTML=found.map(r=>{const idx=D.indexOf(r);return`<div class="gsi" onclick="toggleGS();opMod(${idx})"><div style="font-size:11px;font-weight:600;color:var(--pl)">${cd(r)}</div><div style="font-size:12.5px;color:var(--tx)">${nm(r)}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${pv(r)} | ${bs(r)} | ${sTag(sts(r))}</div></div>`;}).join('');
+}
+
+// ============ KEYBOARD ============
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();toggleGS();}
+  if(e.key==='Escape'){clsModal();if(gsOp)toggleGS();}
+});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&(f.name.endsWith('.xlsx')||f.name.endsWith('.xls')))procFile(f);});
+
+// ============ TOAST ============
+let toastT;
+function toast(msg,type='info'){
+  const ic={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+  const el=document.getElementById('toast'),ec=document.getElementById('tico'),em=document.getElementById('tmsg');
+  if(!el)return; ec.textContent=ic[type]||'ℹ️'; em.textContent=msg;
+  el.style.transform='translateX(-50%) translateY(0)';
+  el.style.borderColor=type==='success'?'var(--ok)':type==='error'?'var(--err)':'var(--bdr)';
+  clearTimeout(toastT); toastT=setTimeout(()=>el.style.transform='translateX(-50%) translateY(100px)',3500);
+}
+</script></body></html>
