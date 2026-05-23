@@ -163,7 +163,7 @@ tr:hover td{background:var(--card2);}tr.cp{cursor:pointer;}
     <div class="file-ts" id="fileTs">📂 ยังไม่ได้โหลดข้อมูล</div>
     <button class="bico" onclick="toggleGS()" title="ค้นหา Ctrl+K">🔍</button>
     <button class="bico" onclick="aiAll()" title="AI วิเคราะห์">✨</button>
-    <button class="btn-upd" onclick="document.getElementById('fi').click()"><span id="uico">🔄</span> อัปเดตข้อมูล</button>
+    <button class="btn-upd" onclick="handleUpdateBtn()"><span id="uico">🔄</span> อัปเดตข้อมูล</button>
   </div>
 </header>
 <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
@@ -199,7 +199,7 @@ tr:hover td{background:var(--card2);}tr.cp{cursor:pointer;}
     <div class="card-hd"><div class="card-title">🏆 โครงการสำคัญ — งบสูงสุด</div><button class="bsm" onclick="gp('budget')">ดูทั้งหมด →</button></div>
     <div class="card-body"><div class="tw"><table><thead><tr><th>#</th><th>รหัสระบบ</th><th>ชื่อโครงการ</th><th>จังหวัด</th><th>ลุ่มน้ำ</th><th>งบรวม (บาท)</th><th>เบิกจ่าย</th><th>% เบิก</th><th>% ผลสะสม</th><th>สถานะ</th></tr></thead><tbody id="topTb"><tr><td colspan="10" style="text-align:center;padding:28px;color:var(--tx3)">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
   </div>
-  <div id="uzMain" class="uz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropF(event)">
+  <div id="uzMain" class="uz" onclick="handleUpdateBtn()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropF(event)">
     <div style="font-size:38px;margin-bottom:10px">📂</div>
     <div style="font-size:14px;color:var(--tx2)">คลิก หรือ ลากไฟล์ .xlsx มาวางที่นี่</div>
     <div style="font-size:11.5px;color:var(--tx3);margin-top:5px">รองรับไฟล์จาก CenProject → ส่งออกข้อมูล → Export Excel</div>
@@ -310,10 +310,11 @@ tr:hover td{background:var(--card2);}tr.cp{cursor:pointer;}
       <div class="fg"><label class="flbl">ปีงบประมาณ</label><input class="finp" id="cfYr" type="number" value="2569"></div>
       <div class="fg"><label class="flbl">Username</label><input class="finp" id="cfUs" type="text" placeholder="onfarm23"></div>
       <div class="fg"><label class="flbl">Password</label><input class="finp" id="cfPw" type="password" placeholder="••••••••"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">🔗 GitHub Raw Base URL (สำหรับโหลดอัตโนมัติ)</label><input class="finp" id="cfRaw" type="url" placeholder="https://raw.githubusercontent.com/username/repo/main" style="font-size:11px"></div>
     </div>
     <div style="font-size:11px;color:var(--tx3);padding:10px;background:var(--bg3);border-radius:8px;margin-bottom:12px;line-height:1.7">
       ⚠️ ข้อมูลบันทึกใน localStorage ของเบราว์เซอร์เท่านั้น ไม่ส่งออกสู่เซิร์ฟเวอร์ภายนอก<br>
-      📌 ขั้นตอน: cenproject.rid.go.th → ล็อกอิน → ระบบติดตาม → ส่งออกข้อมูล → Export Excel → กด "อัปเดตข้อมูล"
+      📌 ขั้นตอน: cenproject.rid.go.th → ล็อกอิน → ระบบติดตาม → ส่งออกข้อมูล → Export Excel → กด "อัปเดตข้อมูล"<br>🤖 <strong>โหมด GitHub Actions:</strong> ใส่ GitHub Raw Base URL แล้วระบบจะโหลดข้อมูลอัตโนมัติจาก repo ของคุณ
     </div>
   </div>
   <div class="stsec"><div class="stitle">🎨 ธีมสีและรูปลักษณ์</div>
@@ -377,7 +378,7 @@ tr:hover td{background:var(--card2);}tr.cp{cursor:pointer;}
 <div class="fab-g">
   <button class="fab" style="background:linear-gradient(135deg,#7B1FA2,#1565C0)" onclick="aiAll()" title="AI วิเคราะห์">✨</button>
   <button class="fab" style="background:linear-gradient(135deg,var(--p),var(--s))" onclick="toggleGS()" title="ค้นหา Ctrl+K">🔍</button>
-  <button class="fab" style="background:linear-gradient(135deg,var(--ac),#E65100)" onclick="document.getElementById('fi').click()" title="โหลดไฟล์">📂</button>
+  <button class="fab" style="background:linear-gradient(135deg,var(--ac),#E65100)" onclick="handleUpdateBtn()" title="โหลดไฟล์">📂</button>
 </div>
 <script>
 // ============ STATE ============
@@ -452,16 +453,16 @@ function gp(id) {
 // ============ CONFIG ============
 function loadCFG() {
   try{CFG=JSON.parse(localStorage.getItem('rid_cfg')||'{}');}catch{CFG={};}
-  CFG={url:'https://cenproject.rid.go.th',year:'2569',user:'onfarm23',pass:'',delay:5,low:30,org:'กรมชลประทาน',refresh:0,theme:'default',...CFG};
+  CFG={url:'https://cenproject.rid.go.th',year:'2569',user:'onfarm23',pass:'',delay:5,low:30,org:'กรมชลประทาน',refresh:0,theme:'default',rawBase:'',...CFG};
 }
 function applyCFG() {
-  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||'';});
+  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org'],['cfRaw','rawBase']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||'';});
   [['cfDl','delay'],['cfLw','low'],['cfRf','refresh']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||0;});
   setTh(CFG.theme,null);
   if(CFG.refresh>0) startRF(CFG.refresh);
 }
 function saveCFG() {
-  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)CFG[k]=el.value;});
+  [['cfUrl','url'],['cfYr','year'],['cfUs','user'],['cfPw','pass'],['cfOrg','org'],['cfRaw','rawBase']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)CFG[k]=el.value;});
   [['cfDl','delay'],['cfLw','low'],['cfRf','refresh']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)CFG[k]=parseFloat(el.value)||0;});
   localStorage.setItem('rid_cfg',JSON.stringify(CFG));
   startRF(CFG.refresh);
@@ -893,6 +894,81 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&(f.name.endsWith('.xlsx')||f.name.endsWith('.xls')))procFile(f);});
+
+
+// ============ GITHUB AUTO-LOAD ============
+async function handleUpdateBtn() {
+  const rawBase = (CFG.rawBase || '').trim();
+  if (rawBase) {
+    try {
+      toast('📡 กำลังตรวจสอบข้อมูลจาก GitHub...', 'info');
+      const res = await fetch(rawBase + '/data/meta.json?t=' + Date.now());
+      if (res.ok) {
+        const meta = await res.json();
+        await loadFromGitHub(rawBase, meta);
+        localStorage.setItem('rid_last_meta', meta.updated_at);
+        return;
+      }
+    } catch(e) { console.log('GitHub load failed, fallback to file picker', e); }
+  }
+  document.getElementById('fi').click();
+}
+
+async function loadFromGitHub(rawBase, meta) {
+  document.getElementById('uico').className = 'spin';
+  document.getElementById('uico').textContent = '⟳';
+  try {
+    const xlsxUrl = rawBase + '/data/cenproject_data.xlsx?t=' + Date.now();
+    const res = await fetch(xlsxUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    D = XLSX.utils.sheet_to_json(ws, { range: 3, defval: null });
+    const ts = meta ? meta.updated_th : new Date().toLocaleDateString('th-TH');
+    document.getElementById('fileTs').innerHTML = `📡 <span>GitHub Actions</span> | อัปเดต: <span>${ts}</span>`;
+    try {
+      const s = JSON.stringify(D.slice(0, 800));
+      if (s.length < 4.5e6) {
+        localStorage.setItem('rid_data', s);
+        localStorage.setItem('rid_ft', ts + '|GitHub Actions');
+      }
+    } catch {}
+    document.getElementById('ntc').style.display = 'none';
+    document.getElementById('uzMain').style.display = 'none';
+    rAll();
+    toast('✅ โหลดข้อมูลจาก GitHub สำเร็จ ' + D.length + ' โครงการ', 'success');
+  } catch(e) {
+    toast('❌ โหลดจาก GitHub ไม่ได้: ' + e.message, 'error');
+    document.getElementById('fi').click();
+  } finally {
+    document.getElementById('uico').className = '';
+    document.getElementById('uico').textContent = '🔄';
+  }
+}
+
+async function checkAutoLoad() {
+  const rawBase = (CFG.rawBase || '').trim();
+  if (!rawBase) return;
+  try {
+    const res = await fetch(rawBase + '/data/meta.json?t=' + Date.now());
+    if (!res.ok) return;
+    const meta = await res.json();
+    const saved = localStorage.getItem('rid_last_meta');
+    if (saved === meta.updated_at) {
+      console.log('ข้อมูลเป็นปัจจุบันแล้ว:', meta.updated_th);
+      return;
+    }
+    toast('📡 พบข้อมูลใหม่ (' + meta.updated_th + ') กำลังโหลดอัตโนมัติ...', 'info');
+    await loadFromGitHub(rawBase, meta);
+    localStorage.setItem('rid_last_meta', meta.updated_at);
+  } catch(e) { /* silent fail */ }
+}
+
+// ตรวจสอบอัตโนมัติเมื่อเปิดหน้า (หน่วงเล็กน้อยให้ page โหลดเสร็จก่อน)
+setTimeout(checkAutoLoad, 1500);
+// ตรวจสอบทุก 10 นาที
+setInterval(checkAutoLoad, 10 * 60 * 1000);
 
 // ============ TOAST ============
 let toastT;
