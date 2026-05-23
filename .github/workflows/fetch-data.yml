@@ -1,41 +1,49 @@
 name: 🔄 Fetch CenProject Data
 
 on:
-  # รันอัตโนมัติทุกวัน เวลา 06:00 น. (ไทย = UTC+7 → 23:00 UTC วันก่อน)
   schedule:
-    - cron: '0 23 * * *'
-
-  # กดปุ่มรันเองได้จาก GitHub Actions tab
+    - cron: '0 23 * * *'   # 06:00 ICT ทุกวัน
   workflow_dispatch:
     inputs:
       budget_year:
-        description: 'ปีงบประมาณ (เช่น 2026)'
+        description: 'ปีงบประมาณ (2026)'
         required: false
         default: '2026'
 
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      # 1. Checkout repo
-      - name: 📂 Checkout repository
+      - name: 📂 Checkout
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Setup Python
-      - name: 🐍 Setup Python
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 3. Install dependencies
       - name: 📦 Install dependencies
-        run: pip install requests urllib3
+        run: |
+          pip install requests urllib3
 
-      # 4. Run fetch script
+      - name: 🔍 Debug — ตรวจสอบ Secrets (ไม่แสดงค่าจริง)
+        run: |
+          if [ -z "$CENPROJECT_USER" ]; then
+            echo "❌ CENPROJECT_USER ไม่ได้ตั้งค่า"
+          else
+            echo "✅ CENPROJECT_USER: ${#CENPROJECT_USER} ตัวอักษร (เซ็ตแล้ว)"
+          fi
+          if [ -z "$CENPROJECT_PASS" ]; then
+            echo "❌ CENPROJECT_PASS ไม่ได้ตั้งค่า"
+          else
+            echo "✅ CENPROJECT_PASS: ${#CENPROJECT_PASS} ตัวอักษร (เซ็ตแล้ว)"
+          fi
+        env:
+          CENPROJECT_USER: ${{ secrets.CENPROJECT_USER }}
+          CENPROJECT_PASS: ${{ secrets.CENPROJECT_PASS }}
+
       - name: 🔐 Fetch data from CenProject
         env:
           CENPROJECT_USER: ${{ secrets.CENPROJECT_USER }}
@@ -43,23 +51,28 @@ jobs:
           BUDGET_YEAR: ${{ github.event.inputs.budget_year || '2026' }}
         run: python scripts/fetch_cenproject.py
 
-      # 5. Commit & push ไฟล์ xlsx ที่ได้
-      - name: 💾 Commit and push data
+      - name: 💾 Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --staged --quiet || git commit -m "🔄 Auto-update CenProject data $(date +'%Y-%m-%d %H:%M UTC')"
-          git push
-        continue-on-error: false
+          if git diff --staged --quiet; then
+            echo "ℹ️ ไม่มีการเปลี่ยนแปลง"
+          else
+            git commit -m "🔄 Auto-update $(date +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "✅ Push สำเร็จ"
+          fi
 
-      # 6. แสดงผลสรุป
-      - name: ✅ Summary
+      - name: 📊 Summary
+        if: always()
         run: |
-          echo "### ✅ อัปเดตข้อมูลสำเร็จ" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 ผลการรัน" >> $GITHUB_STEP_SUMMARY
           if [ -f data/meta.json ]; then
-            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **สำเร็จ**" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
             cat data/meta.json >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **ล้มเหลว** — ไม่พบ data/meta.json" >> $GITHUB_STEP_SUMMARY
           fi
