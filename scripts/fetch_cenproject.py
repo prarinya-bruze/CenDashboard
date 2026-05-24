@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
-Fetch CenProject Data v4 — GraphQL API
-ขั้นตอน:
-  1. Login (session-based)
-  2. POST /track-service (GraphQL) → ได้ Link ของไฟล์
-  3. GET Link → download .xlsx
+Fetch CenProject Data v6
+- เพิ่ม SelfPurchaseFilter และ TroubleTypeFilter ใน GraphQL query
+- รองรับ field เพิ่มเติมที่อาจ required
 """
 import os, sys, re, json
 from datetime import datetime
@@ -12,7 +10,6 @@ import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ============ CONFIG ============
 USERNAME    = os.environ.get("CENPROJECT_USER", "")
 PASSWORD    = os.environ.get("CENPROJECT_PASS", "")
 BUDGET_YEAR = int(os.environ.get("BUDGET_YEAR", "2026"))
@@ -21,25 +18,19 @@ GQL_URL     = f"{BASE}/track-service"
 OUTPUT_DIR  = "data"
 OUTPUT_XLSX = os.path.join(OUTPUT_DIR, "cenproject_data.xlsx")
 OUTPUT_META = os.path.join(OUTPUT_DIR, "meta.json")
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "th-TH,th;q=0.9,en;q=0.8",
-}
-
-# GraphQL query (จาก Network tab)
-GQL_QUERY = """
-query ExportExcelProjectExport(
+# GraphQL query — เพิ่ม SelfPurchaseFilter และ TroubleTypeFilter
+GQL_QUERY = """query ExportExcelProjectExport(
   $BudgetYear: [Int!],
   $ProjectName: String,
   $ProvinceID: [Int],
   $ProgressResultID: [Int],
   $Order: String,
-  $VendorPurchaseFilter: Boolean
+  $VendorPurchaseFilter: Boolean,
+  $SelfPurchaseFilter: Boolean!,
+  $TroubleTypeFilter: Boolean!
 ) {
   ExportExcelProjectExport(
     BudgetYear: $BudgetYear,
@@ -47,14 +38,15 @@ query ExportExcelProjectExport(
     ProvinceID: $ProvinceID,
     ProgressResultID: $ProgressResultID,
     Order: $Order,
-    VendorPurchaseFilter: $VendorPurchaseFilter
+    VendorPurchaseFilter: $VendorPurchaseFilter,
+    SelfPurchaseFilter: $SelfPurchaseFilter,
+    TroubleTypeFilter: $TroubleTypeFilter
   ) {
     FileName
     Link
     __typename
   }
-}
-""".strip()
+}"""
 
 def log(msg): print(msg, flush=True)
 
@@ -70,52 +62,43 @@ def extract_token(html):
 
 def main():
     if not USERNAME or not PASSWORD:
-        log("❌ ไม่พบ CENPROJECT_USER / CENPROJECT_PASS ใน environment")
+        log("❌ ไม่พบ CENPROJECT_USER / CENPROJECT_PASS")
         sys.exit(1)
 
     log(f"👤 User: {USERNAME} | BudgetYear: {BUDGET_YEAR}")
     log("─" * 60)
 
     s = requests.Session()
-    s.headers.update(HEADERS)
     s.verify = False
+    s.headers.update({"User-Agent": UA, "Accept-Language": "th-TH,th;q=0.9"})
 
-    # ─────────── STEP 1: Login ───────────
-    log("📡 STEP 1: GET หน้าหลัก / รับ CSRF token...")
+    # ─── Login ───
+    log("📡 STEP 1: GET หน้าหลัก...")
     r1 = s.get(f"{BASE}/", timeout=30)
     log(f"  → {r1.status_code} | {r1.url}")
     token = extract_token(r1.text)
     if not token:
         r1b = s.get(f"{BASE}/login", timeout=30)
         token = extract_token(r1b.text)
-    log(f"  → CSRF: {'พบ (' + token[:16] + '...)' if token else 'ไม่พบ'}")
+    log(f"  → CSRF: {'พบ' if token else 'ไม่พบ'}")
 
     log("\n🔐 STEP 2: POST Login...")
-    r2 = s.post(
-        f"{BASE}/login",
-        data={"username": USERNAME, "password": PASSWORD, "_token": token},
-        timeout=30,
-        allow_redirects=True,
-    )
+    r2 = s.post(f"{BASE}/login",
+                data={"username": USERNAME, "password": PASSWORD, "_token": token},
+                timeout=30, allow_redirects=True)
     log(f"  → {r2.status_code} | {r2.url}")
     if "/login" in r2.url and r2.status_code == 200:
-        log("❌ Login ล้มเหลว — ตรวจสอบ username/password")
+        log("❌ Login ล้มเหลว")
         sys.exit(1)
     log("✅ Login สำเร็จ")
 
-    # รับ session cookies สำหรับ GraphQL
-    log(f"  → Session cookies: {list(s.cookies.keys())}")
-
-    # ─────────── STEP 2: เข้าหน้า track (เพื่อ warm up session) ───────────
+    # ─── เข้าหน้า export ───
     log("\n🗂️ STEP 3: เข้าหน้า export...")
-    r3 = s.get(
-        f"{BASE}/track/export?BudgetYear={BUDGET_YEAR}",
-        timeout=30,
-    )
+    r3 = s.get(f"{BASE}/track/export?BudgetYear={BUDGET_YEAR}", timeout=30)
     log(f"  → {r3.status_code} | {r3.url}")
 
-    # ─────────── STEP 3: GraphQL — ขอ Link ไฟล์ ───────────
-    log("\n🔗 STEP 4: POST GraphQL — ExportExcelProjectExport...")
+    # ─── GraphQL ───
+    log(f"\n🔗 STEP 4: POST GraphQL (v6 — รวม SelfPurchaseFilter + TroubleTypeFilter)...")
 
     gql_payload = {
         "operationName": "ExportExcelProjectExport",
@@ -127,120 +110,100 @@ def main():
             "ProgressResultID": None,
             "Order": None,
             "VendorPurchaseFilter": True,
+            "SelfPurchaseFilter": False,
+            "TroubleTypeFilter": False,
         },
     }
 
     gql_headers = {
-        **HEADERS,
         "Content-Type": "application/json",
         "Accept": "application/json, */*",
         "Origin": BASE,
         "Referer": f"{BASE}/track/export?BudgetYear={BUDGET_YEAR}",
+        "User-Agent": UA,
     }
 
-    try:
-        r4 = s.post(
-            GQL_URL,
-            json=gql_payload,
-            headers=gql_headers,
-            timeout=120,
-        )
-        log(f"  → Status: {r4.status_code}")
-        log(f"  → Content-Type: {r4.headers.get('Content-Type','?')}")
+    log(f"  → Variables: {json.dumps(gql_payload['variables'], ensure_ascii=False)}")
 
-        if r4.status_code != 200:
-            log(f"❌ GraphQL error: {r4.status_code}")
-            log(f"  → Body: {r4.text[:500]}")
-            sys.exit(1)
+    r4 = s.post(GQL_URL, json=gql_payload, headers=gql_headers, timeout=120)
+    log(f"  → Status: {r4.status_code}")
+    log(f"  → Content-Type: {r4.headers.get('Content-Type','?')}")
+    log(f"  → Response: {r4.text[:800]}")
 
-        gql_resp = r4.json()
-        log(f"  → Response keys: {list(gql_resp.get('data', {}).keys())}")
-
-        # ดึง Link จาก response
-        export_data = (
-            gql_resp.get("data", {})
-                    .get("ExportExcelProjectExport", {})
-        )
-        file_link = export_data.get("Link", "")
-        file_name = export_data.get("FileName", "cenproject_data.xlsx")
-
-        log(f"  → FileName: {file_name}")
-        log(f"  → Link: {file_link}")
-
-        if not file_link:
-            log("❌ ไม่พบ Link ในผลลัพธ์ GraphQL")
-            log(f"  → Full response: {json.dumps(gql_resp, ensure_ascii=False)[:1000]}")
-            sys.exit(1)
-
-    except Exception as e:
-        log(f"❌ GraphQL error: {e}")
-        import traceback; traceback.print_exc()
+    if r4.status_code != 200:
+        log(f"❌ GraphQL ตอบ {r4.status_code}")
         sys.exit(1)
 
-    # ─────────── STEP 4: Download ไฟล์จาก Link ───────────
-    log(f"\n📥 STEP 5: Download ไฟล์...")
+    try:
+        gql_resp = r4.json()
+    except Exception:
+        log("❌ Response ไม่ใช่ JSON")
+        sys.exit(1)
 
-    # สร้าง URL เต็ม
-    if file_link.startswith("http"):
-        download_url = file_link
-    else:
-        download_url = BASE + file_link
+    errors = gql_resp.get("errors", [])
+    if errors:
+        log(f"❌ GraphQL errors:")
+        for e in errors:
+            msg = e.get("message","")
+            log(f"  → {msg}")
+            # ถ้ายังมี missing field — แสดงชื่อ field ที่ขาด
+            if "argument" in msg and "required" in msg:
+                m = re.search(r'argument\s+"?(\w+)"?', msg)
+                if m: log(f"     ** ต้องเพิ่ม field: {m.group(1)}")
+        sys.exit(1)
 
+    export_data = gql_resp.get("data", {}).get("ExportExcelProjectExport", {})
+    if not export_data:
+        log(f"❌ ไม่พบ ExportExcelProjectExport")
+        log(f"  → Full response: {json.dumps(gql_resp, ensure_ascii=False)[:1000]}")
+        sys.exit(1)
+
+    file_link = export_data.get("Link", "")
+    file_name = export_data.get("FileName", "cenproject_data.xlsx")
+    log(f"  ✅ FileName: {file_name}")
+    log(f"  ✅ Link: {file_link}")
+
+    if not file_link:
+        log("❌ Link ว่างเปล่า")
+        sys.exit(1)
+
+    # ─── Download ───
+    download_url = file_link if file_link.startswith("http") else BASE + file_link
+    log(f"\n📥 STEP 5: Download...")
     log(f"  → URL: {download_url}")
 
-    try:
-        r5 = s.get(
-            download_url,
-            timeout=120,
-            headers={
-                **HEADERS,
-                "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*",
-                "Referer": f"{BASE}/track/export?BudgetYear={BUDGET_YEAR}",
-            },
-        )
-        log(f"  → Status: {r5.status_code}")
-        log(f"  → Content-Type: {r5.headers.get('Content-Type','?')}")
-        log(f"  → Size: {len(r5.content):,} bytes")
-        log(f"  → Magic: {r5.content[:4].hex()}")
+    r5 = s.get(download_url, timeout=180,
+               headers={"Accept": "*/*", "Referer": f"{BASE}/track/export",
+                        "User-Agent": UA})
+    log(f"  → Status: {r5.status_code}")
+    log(f"  → Content-Type: {r5.headers.get('Content-Type','?')}")
+    log(f"  → Size: {len(r5.content):,} bytes | Magic: {r5.content[:4].hex()}")
 
-        # ตรวจสอบ magic bytes
-        is_xlsx = r5.content[:4] == b'PK\x03\x04'
-        is_xls  = r5.content[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
-
-        if not (is_xlsx or is_xls):
-            log("❌ ไฟล์ที่ได้ไม่ใช่ Excel")
-            log(f"  → Preview: {r5.content[:200]}")
-            sys.exit(1)
-
-        # บันทึกไฟล์
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        with open(OUTPUT_XLSX, "wb") as f:
-            f.write(r5.content)
-        sz = os.path.getsize(OUTPUT_XLSX)
-        log(f"\n✅ บันทึก: {OUTPUT_XLSX} ({sz:,} bytes)")
-
-        # เขียน meta.json
-        now = datetime.utcnow()
-        meta = {
-            "updated_at": now.isoformat() + "Z",
-            "updated_th": (
-                f"{now.day:02d}/{now.month:02d}/{now.year+543} "
-                f"{(now.hour+7)%24:02d}:{now.minute:02d} ICT"
-            ),
-            "file_size_bytes": sz,
-            "budget_year": BUDGET_YEAR,
-            "filename": file_name,
-            "source_link": file_link,
-        }
-        with open(OUTPUT_META, "w", encoding="utf-8") as f:
-            json.dump(meta, f, ensure_ascii=False, indent=2)
-        log(f"✅ meta.json บันทึกแล้ว")
-        log(f"\n🎉 สำเร็จ! อัปเดต ณ {meta['updated_th']}")
-
-    except Exception as e:
-        log(f"❌ Download error: {e}")
-        import traceback; traceback.print_exc()
+    is_xlsx = r5.content[:4] == b'PK\x03\x04'
+    is_xls  = r5.content[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+    if not (is_xlsx or is_xls):
+        log("❌ ไม่ใช่ไฟล์ Excel")
+        log(f"  → Preview: {r5.content[:300]}")
         sys.exit(1)
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(OUTPUT_XLSX, "wb") as f: f.write(r5.content)
+    sz = os.path.getsize(OUTPUT_XLSX)
+    log(f"\n✅ บันทึก: {OUTPUT_XLSX} ({sz:,} bytes)")
+
+    now = datetime.utcnow()
+    meta = {
+        "updated_at": now.isoformat() + "Z",
+        "updated_th": (f"{now.day:02d}/{now.month:02d}/{now.year+543} "
+                       f"{(now.hour+7)%24:02d}:{now.minute:02d} ICT"),
+        "file_size_bytes": sz,
+        "budget_year": BUDGET_YEAR,
+        "filename": file_name,
+    }
+    with open(OUTPUT_META, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+    log(f"✅ meta.json บันทึกแล้ว")
+    log(f"\n🎉 สำเร็จ! ข้อมูล ณ {meta['updated_th']}")
 
 if __name__ == "__main__":
     main()
