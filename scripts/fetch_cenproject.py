@@ -235,7 +235,7 @@ def main():
         "query": GQL_QUERY,
     }
 
-    r4 = s.post(GQL_URL, json=gql_payload, timeout=180, headers={
+    r4 = s.post(GQL_URL, json=gql_payload, timeout=600, headers={
         "Content-Type": "application/json",
         "Accept": "application/json, */*",
         "Origin": BASE,
@@ -280,7 +280,7 @@ def main():
     download_url = file_link if file_link.startswith("http") else BASE + file_link
     log(f"\n📥 STEP 5: Download {download_url}")
 
-    r5 = s.get(download_url, timeout=180,
+    r5 = s.get(download_url, timeout=600,
                headers={"Accept": "*/*", "Referer": f"{BASE}/track/export",
                         "User-Agent": UA})
     log(f"  → Status: {r5.status_code} | Size: {len(r5.content):,} | Magic: {r5.content[:4].hex()}")
