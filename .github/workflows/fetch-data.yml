@@ -2,7 +2,7 @@ name: 🔄 Fetch CenProject Data
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 06:00 ICT ทุกวัน
+    - cron: '0 23 * * *'
   workflow_dispatch:
     inputs:
       budget_year:
@@ -13,7 +13,7 @@ on:
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: 📂 Checkout
@@ -25,24 +25,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Install dependencies
-        run: |
-          pip install requests urllib3
-
-      - name: 🔍 Debug — ตรวจสอบ Secrets (ไม่แสดงค่าจริง)
-        run: |
-          if [ -z "$CENPROJECT_USER" ]; then
-            echo "❌ CENPROJECT_USER ไม่ได้ตั้งค่า"
-          else
-            echo "✅ CENPROJECT_USER: ${#CENPROJECT_USER} ตัวอักษร (เซ็ตแล้ว)"
-          fi
-          if [ -z "$CENPROJECT_PASS" ]; then
-            echo "❌ CENPROJECT_PASS ไม่ได้ตั้งค่า"
-          else
-            echo "✅ CENPROJECT_PASS: ${#CENPROJECT_PASS} ตัวอักษร (เซ็ตแล้ว)"
-          fi
-        env:
-          CENPROJECT_USER: ${{ secrets.CENPROJECT_USER }}
-          CENPROJECT_PASS: ${{ secrets.CENPROJECT_PASS }}
+        run: pip install requests urllib3
 
       - name: 🔐 Fetch data from CenProject
         env:
@@ -51,7 +34,18 @@ jobs:
           BUDGET_YEAR: ${{ github.event.inputs.budget_year || '2026' }}
         run: python scripts/fetch_cenproject.py
 
+      # ถ้า script ล้มเหลว — commit debug HTML เพื่อดู URL จริง
+      - name: 🐛 Upload debug file (ถ้าล้มเหลว)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-html
+          path: data/debug_export_page.html
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: 💾 Commit and push
+        if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -67,12 +61,13 @@ jobs:
       - name: 📊 Summary
         if: always()
         run: |
-          echo "### 📊 ผลการรัน" >> $GITHUB_STEP_SUMMARY
+          echo "### ผลการรัน" >> $GITHUB_STEP_SUMMARY
           if [ -f data/meta.json ]; then
             echo "✅ **สำเร็จ**" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             cat data/meta.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **ล้มเหลว** — ไม่พบ data/meta.json" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **ล้มเหลว**" >> $GITHUB_STEP_SUMMARY
+            echo "ดู Artifacts → debug-html เพื่อวิเคราะห์หน้า export จริง" >> $GITHUB_STEP_SUMMARY
           fi
