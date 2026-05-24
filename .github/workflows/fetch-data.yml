@@ -1,8 +1,8 @@
-name: 🔄 Fetch CenProject Data
+name: 🔄 Fetch CenProject Data (Playwright)
 
 on:
   schedule:
-    - cron: '0 23 * * *'
+    - cron: '0 23 * * *'   # 06:00 ICT ทุกวัน
   workflow_dispatch:
     inputs:
       budget_year:
@@ -24,23 +24,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Install dependencies
-        run: pip install requests urllib3
+      - name: 📦 Install Python dependencies
+        run: pip install playwright
+
+      - name: 🌐 Install Chromium browser
+        run: python -m playwright install chromium --with-deps
 
       - name: 🔐 Fetch data from CenProject
         env:
           CENPROJECT_USER: ${{ secrets.CENPROJECT_USER }}
           CENPROJECT_PASS: ${{ secrets.CENPROJECT_PASS }}
           BUDGET_YEAR: ${{ github.event.inputs.budget_year || '2026' }}
+          CI: "true"
         run: python scripts/fetch_cenproject.py
 
-      # ถ้า script ล้มเหลว — commit debug HTML เพื่อดู URL จริง
-      - name: 🐛 Upload debug file (ถ้าล้มเหลว)
+      - name: 🐛 Upload debug screenshots (ถ้าล้มเหลว)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-html
-          path: data/debug_export_page.html
+          name: debug-screenshots
+          path: data/debug_*.png
           if-no-files-found: ignore
           retention-days: 3
 
@@ -64,10 +67,9 @@ jobs:
           echo "### ผลการรัน" >> $GITHUB_STEP_SUMMARY
           if [ -f data/meta.json ]; then
             echo "✅ **สำเร็จ**" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
             cat data/meta.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **ล้มเหลว**" >> $GITHUB_STEP_SUMMARY
-            echo "ดู Artifacts → debug-html เพื่อวิเคราะห์หน้า export จริง" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **ล้มเหลว** — ดู Artifacts → debug-screenshots" >> $GITHUB_STEP_SUMMARY
           fi
