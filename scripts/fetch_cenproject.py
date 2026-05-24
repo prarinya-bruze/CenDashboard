@@ -32,7 +32,6 @@ def run():
         ctx = browser.new_context(
             accept_downloads=True,
             viewport={"width": 1280, "height": 900},
-            downloads_path=os.path.abspath(OUTPUT_DIR),
         )
         page = ctx.new_page()
 
