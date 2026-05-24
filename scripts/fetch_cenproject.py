@@ -23,16 +23,38 @@ def run():
 
     with sync_playwright() as p:
         log(f"🌐 Launch browser (headless={IS_CI})...")
+        # args สำหรับ headless ที่ดูเหมือน real browser มากขึ้น
+        launch_args = [
+            "--no-sandbox", "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled",
+            "--disable-web-security", "--disable-features=IsolateOrigins,site-per-process",
+        ] if IS_CI else ["--disable-blink-features=AutomationControlled"]
+
         browser = p.chromium.launch(
             headless=IS_CI,
-            slow_mo=200 if not IS_CI else 0,
-            args=["--no-sandbox", "--disable-setuid-sandbox",
-                  "--disable-dev-shm-usage"] if IS_CI else [],
+            slow_mo=100 if not IS_CI else 0,
+            args=launch_args,
         )
         ctx = browser.new_context(
             accept_downloads=True,
             viewport={"width": 1280, "height": 900},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            locale="th-TH",
+            timezone_id="Asia/Bangkok",
+            extra_http_headers={
+                "Accept-Language": "th-TH,th;q=0.9,en;q=0.8",
+            },
         )
+        # ซ่อน webdriver flag
+        ctx.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['th-TH','th','en']});
+        """)
         page = ctx.new_page()
 
         # ── STEP 1: เปิดเว็บ ──
@@ -43,31 +65,76 @@ def run():
 
         # ── STEP 2: Login ──
         log("\n🔐 STEP 2: Login...")
-        page.get_by_placeholder("Username").fill(USERNAME)
-        page.get_by_placeholder("Password").fill(PASSWORD)
-        page.get_by_role("button", name="เข้าสู่ระบบ").click()
+        # screenshot ก่อน fill เพื่อดูว่าหน้า login โหลดครบไหม
+        if IS_CI:
+            page.screenshot(path=os.path.join(OUTPUT_DIR, "debug_before_login.png"))
+
+        # รอ input ปรากฏก่อน fill
+        page.wait_for_selector("input[placeholder='Username'], input[name='username'], #username", timeout=10000)
+        page.locator("input[placeholder='Username'], input[name='username'], #username").first.fill(USERNAME)
+        page.locator("input[placeholder='Password'], input[name='password'], #password, input[type='password']").first.fill(PASSWORD)
+
+        if IS_CI:
+            page.screenshot(path=os.path.join(OUTPUT_DIR, "debug_filled_login.png"))
+
+        page.locator("button[type='submit'], button:has-text('เข้าสู่ระบบ')").first.click()
         page.wait_for_load_state("domcontentloaded", timeout=20000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
         log(f"  → URL หลัง login: {page.url}")
 
-        if "/login" in page.url:
-            log("❌ Login ล้มเหลว — ตรวจสอบ username/password")
+        if IS_CI:
+            page.screenshot(path=os.path.join(OUTPUT_DIR, "debug_after_login.png"))
+
+        # ตรวจสอบว่า login จริงๆ โดยดู URL และเนื้อหาหน้า
+        current_url = page.url
+        page_content = page.content()
+        still_on_login = (
+            "/login" in current_url or
+            "เข้าสู่ระบบ" in page_content and "Username" in page_content and "Password" in page_content
+        )
+        if still_on_login:
+            log(f"❌ Login ล้มเหลว | URL: {current_url}")
+            log("   อาจเป็นเพราะ: รหัสผ่านผิด / IP ถูก block / CAPTCHA")
             browser.close()
             raise SystemExit(1)
         log("  ✅ Login สำเร็จ")
 
-        # ── STEP 3: เลือกระบบติดตาม ──
+        # ── STEP 3: เลือกระบบติดตาม (จำเป็นก่อนเข้า export) ──
         log("\n🗂️ STEP 3: เลือกระบบติดตาม...")
-        try:
-            # คลิก "ระบบติดตาม" ถ้ามี modal หลัง login
-            track_btn = page.locator("text=ระบบติดตาม").first
-            if track_btn.is_visible(timeout=3000):
-                track_btn.click()
-                page.wait_for_load_state("domcontentloaded", timeout=15000)
-                page.wait_for_timeout(2000)
-                log(f"  → คลิกระบบติดตาม | URL: {page.url}")
-        except Exception:
-            log("  → ไม่มี modal ระบบติดตาม (ข้ามไป)")
+        # ไปที่ track/project ก่อนเพื่อ set session
+        page.goto(f"{BASE_URL}/track/project?BudgetYear={BUDGET_YEAR}",
+                  wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(2000)
+        log(f"  → URL: {page.url}")
+
+        # ถ้า redirect กลับ root = มี modal ให้เลือกระบบ
+        if page.url.rstrip("/") == BASE_URL.rstrip("/"):
+            log("  → พบ redirect กลับ root — กำลังคลิก ระบบติดตาม...")
+            if IS_CI:
+                page.screenshot(path=os.path.join(OUTPUT_DIR, "debug_need_select.png"))
+            for sel in [
+                "text=ระบบติดตาม",
+                "text=Project Tracking",
+                "a:has-text('ระบบติดตาม')",
+                "div:has-text('ระบบติดตาม')",
+                "button:has-text('ระบบติดตาม')",
+                "[href*='track']",
+            ]:
+                try:
+                    el = page.locator(sel).first
+                    if el.is_visible(timeout=2000):
+                        el.click()
+                        page.wait_for_load_state("domcontentloaded", timeout=20000)
+                        page.wait_for_timeout(2000)
+                        log(f"  → คลิกสำเร็จ: {sel} | URL: {page.url}")
+                        break
+                except Exception:
+                    continue
+            # ลองไปหน้า track อีกครั้ง
+            page.goto(f"{BASE_URL}/track/project?BudgetYear={BUDGET_YEAR}",
+                      wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2000)
+            log(f"  → URL หลังคลิก: {page.url}")
 
         # ── STEP 4: เข้าหน้า Export ──
         log(f"\n📋 STEP 4: ไปหน้า Export ({EXPORT_URL})")
