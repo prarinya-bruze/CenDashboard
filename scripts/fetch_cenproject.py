@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Fetch CenProject Data v6
-- เพิ่ม SelfPurchaseFilter และ TroubleTypeFilter ใน GraphQL query
-- รองรับ field เพิ่มเติมที่อาจ required
+Fetch CenProject Data v8 — FINAL
+Variables ครบถ้วนจาก Network tab จริง:
+  BudgetYear, ProgressResultID, Order, VendorPurchaseFilter, SelfPurchaseFilter,
+  TroubleTypeFilter, UsedBudgetFilter, ProgressPlanFilter, ProjectTypeFilter,
+  KPIFilter, KPISupFilter, KPISupNumber, IsExportImage
+  + fields อื่นๆ ทั้งหมด (null)
 """
 import os, sys, re, json
 from datetime import datetime
-import requests
-import urllib3
+import requests, urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 USERNAME    = os.environ.get("CENPROJECT_USER", "")
@@ -21,32 +23,143 @@ OUTPUT_META = os.path.join(OUTPUT_DIR, "meta.json")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
-# GraphQL query — เพิ่ม SelfPurchaseFilter และ TroubleTypeFilter
-GQL_QUERY = """query ExportExcelProjectExport(
-  $BudgetYear: [Int!],
-  $ProjectName: String,
-  $ProvinceID: [Int],
-  $ProgressResultID: [Int],
-  $Order: String,
-  $VendorPurchaseFilter: Boolean,
-  $SelfPurchaseFilter: Boolean!,
-  $TroubleTypeFilter: Boolean!
-) {
-  ExportExcelProjectExport(
-    BudgetYear: $BudgetYear,
-    ProjectName: $ProjectName,
-    ProvinceID: $ProvinceID,
-    ProgressResultID: $ProgressResultID,
-    Order: $Order,
-    VendorPurchaseFilter: $VendorPurchaseFilter,
-    SelfPurchaseFilter: $SelfPurchaseFilter,
-    TroubleTypeFilter: $TroubleTypeFilter
-  ) {
-    FileName
-    Link
-    __typename
-  }
-}"""
+# ── GraphQL query จาก View source จริง ──
+GQL_QUERY = (
+    "query ExportExcelProjectExport("
+    "$BudgetYear: [Int!], $ProjectName: String, $ProvinceID: [Int], "
+    "$DistrictID: [Int], $SubdistrictID: [Int], $BasinID: [Int], "
+    "$SubbasinID: [Int], $OperationStartYear: Int, $ProductID: [Int], "
+    "$ActivityID: [Int], $ProjectTypeID: [Int], "
+    "$BudgetRangeStart: Float, $BudgetRangeEnd: Float, "
+    "$PurchaseTypeID: [Int], $PurchaseStepID: [Int], "
+    "$ProgressResultRangeStart: Float, $ProgressResultRangeEnd: Float, "
+    "$UsedBudgetResultRangeStart: Float, $UsedBudgetResultRangeEnd: Float, "
+    "$OfficeOrganizationID: [Int], $OrganizationID: [Int], "
+    "$BudgetSourceID: [Int], $BudgetTypeID: [Int], "
+    "$ProjectCode: [String], $ProjectSizeID: [Int], "
+    "$TagID: [Int], $RoyalID: [Int], "
+    "$PercentRangeStart: Float, $PercentRangeEnd: Float, "
+    "$IsCanceled: Int, $IsMergeDraft: Int, "
+    "$VendorPurchaseFilter: Boolean!, $SelfPurchaseFilter: Boolean!, "
+    "$TroubleTypeFilter: Boolean!, $UsedBudgetFilter: Boolean!, "
+    "$ProgressPlanFilter: Boolean!, $ProjectTypeFilter: Boolean!, "
+    "$KPIFilter: Boolean!, $KPISupFilter: Boolean!, "
+    "$KPISupNumber: Int, $PictureFilter: Boolean, "
+    "$ProgressResultID: [Int], $ProgressResultInProgressID: [Int], "
+    "$BudgetDimensionID: [Int], $SupervisorName: String, "
+    "$IsExportImage: Boolean, $Order: Int, $Offset: Int, $Limit: Int"
+    ") {\n"
+    "  ExportExcelProjectExport(\n"
+    "    BudgetYear: $BudgetYear\n"
+    "    ProjectName: $ProjectName\n"
+    "    ProvinceID: $ProvinceID\n"
+    "    DistrictID: $DistrictID\n"
+    "    SubdistrictID: $SubdistrictID\n"
+    "    BasinID: $BasinID\n"
+    "    SubbasinID: $SubbasinID\n"
+    "    OperationStartYear: $OperationStartYear\n"
+    "    ProductID: $ProductID\n"
+    "    ActivityID: $ActivityID\n"
+    "    ProjectTypeID: $ProjectTypeID\n"
+    "    BudgetRangeStart: $BudgetRangeStart\n"
+    "    BudgetRangeEnd: $BudgetRangeEnd\n"
+    "    PurchaseTypeID: $PurchaseTypeID\n"
+    "    PurchaseStepID: $PurchaseStepID\n"
+    "    ProgressResultRangeStart: $ProgressResultRangeStart\n"
+    "    ProgressResultRangeEnd: $ProgressResultRangeEnd\n"
+    "    UsedBudgetResultRangeStart: $UsedBudgetResultRangeStart\n"
+    "    UsedBudgetResultRangeEnd: $UsedBudgetResultRangeEnd\n"
+    "    OfficeOrganizationID: $OfficeOrganizationID\n"
+    "    OrganizationID: $OrganizationID\n"
+    "    BudgetSourceID: $BudgetSourceID\n"
+    "    BudgetTypeID: $BudgetTypeID\n"
+    "    ProjectCode: $ProjectCode\n"
+    "    ProjectSizeID: $ProjectSizeID\n"
+    "    TagID: $TagID\n"
+    "    RoyalID: $RoyalID\n"
+    "    PercentRangeStart: $PercentRangeStart\n"
+    "    PercentRangeEnd: $PercentRangeEnd\n"
+    "    IsCanceled: $IsCanceled\n"
+    "    IsMergeDraft: $IsMergeDraft\n"
+    "    VendorPurchaseFilter: $VendorPurchaseFilter\n"
+    "    SelfPurchaseFilter: $SelfPurchaseFilter\n"
+    "    TroubleTypeFilter: $TroubleTypeFilter\n"
+    "    UsedBudgetFilter: $UsedBudgetFilter\n"
+    "    ProgressPlanFilter: $ProgressPlanFilter\n"
+    "    ProjectTypeFilter: $ProjectTypeFilter\n"
+    "    KPIFilter: $KPIFilter\n"
+    "    KPISupFilter: $KPISupFilter\n"
+    "    KPISupNumber: $KPISupNumber\n"
+    "    PictureFilter: $PictureFilter\n"
+    "    ProgressResultID: $ProgressResultID\n"
+    "    ProgressResultInProgressID: $ProgressResultInProgressID\n"
+    "    BudgetDimensionID: $BudgetDimensionID\n"
+    "    SupervisorName: $SupervisorName\n"
+    "    IsExportImage: $IsExportImage\n"
+    "    Order: $Order\n"
+    "    Offset: $Offset\n"
+    "    Limit: $Limit\n"
+    "  ) {\n"
+    "    FileName\n"
+    "    Link\n"
+    "    __typename\n"
+    "  }\n"
+    "}"
+)
+
+# Variables จาก Payload จริง (View source)
+GQL_VARIABLES = {
+    "BudgetYear": None,          # จะใส่ค่าจริงตอน runtime
+    "ProgressResultID": None,
+    "Order": None,
+    "VendorPurchaseFilter": True,
+    "SelfPurchaseFilter": True,
+    "TroubleTypeFilter": True,
+    "UsedBudgetFilter": True,
+    "ProgressPlanFilter": True,
+    "ProjectTypeFilter": True,
+    "KPIFilter": True,
+    "KPISupFilter": True,
+    "KPISupNumber": 5,
+    "IsExportImage": False,
+    # fields ที่เหลือ null ทั้งหมด
+    "ProjectName": None,
+    "ProvinceID": None,
+    "DistrictID": None,
+    "SubdistrictID": None,
+    "BasinID": None,
+    "SubbasinID": None,
+    "OperationStartYear": None,
+    "ProductID": None,
+    "ActivityID": None,
+    "ProjectTypeID": None,
+    "BudgetRangeStart": None,
+    "BudgetRangeEnd": None,
+    "PurchaseTypeID": None,
+    "PurchaseStepID": None,
+    "ProgressResultRangeStart": None,
+    "ProgressResultRangeEnd": None,
+    "UsedBudgetResultRangeStart": None,
+    "UsedBudgetResultRangeEnd": None,
+    "OfficeOrganizationID": None,
+    "OrganizationID": None,
+    "BudgetSourceID": None,
+    "BudgetTypeID": None,
+    "ProjectCode": None,
+    "ProjectSizeID": None,
+    "TagID": None,
+    "RoyalID": None,
+    "PercentRangeStart": None,
+    "PercentRangeEnd": None,
+    "IsCanceled": None,
+    "IsMergeDraft": None,
+    "PictureFilter": None,
+    "ProgressResultInProgressID": None,
+    "BudgetDimensionID": None,
+    "SupervisorName": None,
+    "Offset": None,
+    "Limit": None,
+}
 
 def log(msg): print(msg, flush=True)
 
@@ -72,7 +185,7 @@ def main():
     s.verify = False
     s.headers.update({"User-Agent": UA, "Accept-Language": "th-TH,th;q=0.9"})
 
-    # ─── Login ───
+    # ── STEP 1: Login ──
     log("📡 STEP 1: GET หน้าหลัก...")
     r1 = s.get(f"{BASE}/", timeout=30)
     log(f"  → {r1.status_code} | {r1.url}")
@@ -92,27 +205,20 @@ def main():
         sys.exit(1)
     log("✅ Login สำเร็จ")
 
-    # ─── เข้าหน้า export ───
+    # ── STEP 2: เข้าหน้า export ──
     log("\n🗂️ STEP 3: เข้าหน้า export...")
     r3 = s.get(f"{BASE}/track/export?BudgetYear={BUDGET_YEAR}", timeout=30)
     log(f"  → {r3.status_code} | {r3.url}")
 
-    # ─── GraphQL ───
-    log(f"\n🔗 STEP 4: POST GraphQL (v6 — รวม SelfPurchaseFilter + TroubleTypeFilter)...")
+    # ── STEP 3: GraphQL ──
+    log(f"\n🔗 STEP 4: POST GraphQL (v8 FINAL)...")
+    variables = dict(GQL_VARIABLES)
+    variables["BudgetYear"] = [BUDGET_YEAR]
 
     gql_payload = {
         "operationName": "ExportExcelProjectExport",
+        "variables": variables,
         "query": GQL_QUERY,
-        "variables": {
-            "BudgetYear": [BUDGET_YEAR],
-            "ProjectName": None,
-            "ProvinceID": None,
-            "ProgressResultID": None,
-            "Order": None,
-            "VendorPurchaseFilter": True,
-            "SelfPurchaseFilter": False,
-            "TroubleTypeFilter": False,
-        },
     }
 
     gql_headers = {
@@ -123,12 +229,9 @@ def main():
         "User-Agent": UA,
     }
 
-    log(f"  → Variables: {json.dumps(gql_payload['variables'], ensure_ascii=False)}")
-
-    r4 = s.post(GQL_URL, json=gql_payload, headers=gql_headers, timeout=120)
+    r4 = s.post(GQL_URL, json=gql_payload, headers=gql_headers, timeout=180)
     log(f"  → Status: {r4.status_code}")
-    log(f"  → Content-Type: {r4.headers.get('Content-Type','?')}")
-    log(f"  → Response: {r4.text[:800]}")
+    log(f"  → Response (500 chars): {r4.text[:500]}")
 
     if r4.status_code != 200:
         log(f"❌ GraphQL ตอบ {r4.status_code}")
@@ -142,35 +245,29 @@ def main():
 
     errors = gql_resp.get("errors", [])
     if errors:
-        log(f"❌ GraphQL errors:")
+        log("❌ GraphQL errors:")
         for e in errors:
-            msg = e.get("message","")
-            log(f"  → {msg}")
-            # ถ้ายังมี missing field — แสดงชื่อ field ที่ขาด
-            if "argument" in msg and "required" in msg:
-                m = re.search(r'argument\s+"?(\w+)"?', msg)
-                if m: log(f"     ** ต้องเพิ่ม field: {m.group(1)}")
+            log(f"  → {e.get('message','')}")
         sys.exit(1)
 
     export_data = gql_resp.get("data", {}).get("ExportExcelProjectExport", {})
     if not export_data:
-        log(f"❌ ไม่พบ ExportExcelProjectExport")
-        log(f"  → Full response: {json.dumps(gql_resp, ensure_ascii=False)[:1000]}")
+        log(f"❌ ไม่พบ data.ExportExcelProjectExport")
+        log(f"  → Full: {json.dumps(gql_resp, ensure_ascii=False)[:800]}")
         sys.exit(1)
 
     file_link = export_data.get("Link", "")
     file_name = export_data.get("FileName", "cenproject_data.xlsx")
-    log(f"  ✅ FileName: {file_name}")
+    log(f"\n  ✅ FileName: {file_name}")
     log(f"  ✅ Link: {file_link}")
 
     if not file_link:
         log("❌ Link ว่างเปล่า")
         sys.exit(1)
 
-    # ─── Download ───
+    # ── STEP 4: Download ──
     download_url = file_link if file_link.startswith("http") else BASE + file_link
-    log(f"\n📥 STEP 5: Download...")
-    log(f"  → URL: {download_url}")
+    log(f"\n📥 STEP 5: Download {download_url}")
 
     r5 = s.get(download_url, timeout=180,
                headers={"Accept": "*/*", "Referer": f"{BASE}/track/export",
